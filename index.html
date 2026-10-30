@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文字冒險遊戲</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif}
+body{background:#111;color:#eee;padding:16px;line-height:1.6}
+#container{max-width:700px;margin:0 auto}
+#story{font-size:18px;margin-bottom:24px;min-height:120px}
+#imgBox{margin-bottom:20px;text-align:center}
+#imgBox img{max-width:100%;border-radius:8px}
+.choice{display:block;width:100%;padding:14px;margin:8px 0;background:#222;border:1px solid #444;color:#fff;border-radius:8px;font-size:16px;text-align:left}
+.choice:active{background:#333}
+</style>
+</head>
+<body>
+<div id="container">
+<div id="imgBox">
+<img src="images/baby.jpg" alt="開局圖">
+</div>
+<div id="story"></div>
+<div id="choices"></div>
+</div>
+<script>
+const gameData = {
+  start:{
+    text:"你醒咗，發現自己喺一間古老大屋入面，周圍陰沉沉。門有兩個方向：左邊木門，右邊樓梯。",
+    image:"images/baby.jpg",
+    choices:[
+      {text:"走左邊木門",next:"doorLeft"},
+      {text:"行右邊樓梯",next:"stairsRight"}
+    ]
+  },
+  doorLeft:{
+    text:"木門推開，入面係一間廚房，枱上擺住一把舊鎅刀。",
+    choices:[
+      {text:"拿起鎅刀",next:"getKnife"},
+      {text:"返出去大廳",next:"start"}
+    ]
+  },
+  getKnife:{
+    text:"你攞起鎅刀，感覺安心咗少少。廚房窗戶外面黑漆漆。",
+    choices:[
+      {text:"離開廚房返大廳",next:"start"}
+    ]
+  },
+  stairsRight:{
+    text:"你沿樓梯向上行，樓上有一道鎖住嘅房門。",
+    choices:[
+      {text:"試下推門",next:"lockedDoor"},
+      {text:"返落樓",next:"start"}
+    ]
+  },
+  lockedDoor:{
+    text:"門鎖實咗，推唔開，需要搵方法開鎖。",
+    choices:[
+      {text:"返落樓搵工具",next:"start"}
+    ]
+  }
+};
+
+let nowScene = "start";
+const storyEl = document.getElementById("story");
+const choicesEl = document.getElementById("choices");
+const imgEl = document.querySelector("#imgBox img");
+
+function render(sceneId){
+  const scene = gameData[sceneId];
+  storyEl.textContent = scene.text;
+  if(scene.image) imgEl.src = scene.image;
+  choicesEl.innerHTML = "";
+  scene.choices.forEach(c=>{
+    const btn = document.createElement("button");
+    btn.className="choice";
+    btn.textContent = c.text;
+    btn.onclick = ()=>render(c.next);
+    choicesEl.appendChild(btn);
+  })
+}
+render("start");
+</script>
+</body>
+</html>
