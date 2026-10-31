@@ -8,9 +8,10 @@
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif}
 
 body{
-  /* 整頁背景：BB相片滿版 */
-  background: url("Images/baby.jpg") no-repeat center center;
+  /* 整頁背景：BB相片滿版，細寫images */
+  background: url("images/baby.jpg") no-repeat center center;
   background-size: cover;
+  background-attachment: fixed;
   min-height: 100vh;
   color:#fff;
   padding:16px;
@@ -47,7 +48,6 @@ body{
 </head>
 <body>
 <div id="container">
-  <!-- 刪走原本單獨嘅 imgBox，而家圖片做背景 -->
   <div id="story"></div>
   <div id="choices"></div>
 </div>
@@ -55,7 +55,6 @@ body{
 const gameData = {
   start:{
     text:"新的人生即將開始。你的出身條件已經隨機生成。你可以重新抽一次先天設定，或者直接開始成長旅程。",
-    // 呢度唔再需要單獨image，圖片用body背景
     choices:[
       {text:"開始新一局",next:"doorLeft"},
       {text:"重新抽取先天屬性",next:"start"}
