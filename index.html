@@ -7,12 +7,13 @@
 <style>
 *{box-sizing:border-box;font-family:system-ui, sans-serif;margin:0;padding:0}
 body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-height:1.6}
-#container{background:#222;padding:24px;border-radius:12px;min-height:400px}
-#story{margin-bottom:24px;white-space:pre-line;font-size:17px}
+#container{background:#222;padding:24px;border-radius:12px;min-height:400px;display:flex;flex-direction:column;justify-content:space-between}
+#story{margin-bottom:24px;font-size:18px;min-height:120px;display:flex;align-items:center;transition: opacity 0.3s ease;}
 .choice-btn{display:block;width:100%;padding:14px;margin:10px 0;background:#333;color:#fff;border:1px solid #555;border-radius:8px;text-align:left;cursor:pointer;font-size:16px}
 .choice-btn:hover{background:#444;}
 #log{margin-top:20px;color:#aaa;font-size:14px;display:none;}
-/* 跳過劇本按鈕樣式 */
+
+/* 跳過整段劇本按鈕樣式 */
 .skip-btn{
   display:block;
   width:100%;
@@ -64,7 +65,9 @@ white-space:pre-wrap;
 <body>
 <div id="container">
 <div id="story"></div>
-<div id="choices"></div>
+<div id="choices-area">
+  <div id="choices"></div>
+</div>
 <div id="log"></div>
 </div>
 
@@ -131,7 +134,6 @@ const districtData = {
   }
 };
 
-// 通用概率抽籤函數
 function rollByProb(probObj){
   const total = Object.values(probObj).reduce((a,b)=>a+b,0);
   let r = Math.random() * total;
@@ -141,7 +143,6 @@ function rollByProb(probObj){
   }
 }
 
-// 角色出身背景生成器
 function generateBirthBackground(gameState){
   const {district, familyWealth, origin} = gameState.birth;
   let originText = "";
@@ -185,14 +186,12 @@ function generateBirthBackground(gameState){
     }
   }
 
-  const fullBio = `【出身背景】
+  return `【出身背景】
 居住地：${district}
 家庭背景：${originText}
 ${wealthDesc}`;
-  return fullBio;
 }
 
-// ========== 遊戲狀態【初始化擴展：加入所有新屬性防錯】 ==========
 let gameState = {
   birth:{
     gender:"male",
@@ -206,33 +205,14 @@ let gameState = {
   },
   initialNationality:"",
   trait:{
-    outgoing:50,
-    pragmatic:50,
-    empathy:50,
-    introvert:50,
-    perception:50,
-    attachment:50,
-    bold:50,
-    language:50,
-    imitate:50,
-    social:50,
-    selfCare:50,
-    will:50,
-    imagination:50,
-    selfControl:50,
-    concentration:50,
-    inquire:50,
-    creativity:50,
-    patience:50,
-    independence:50
+    outgoing:50, pragmatic:50, empathy:50, introvert:50,
+    perception:50, attachment:50, bold:50, language:50,
+    imitate:50, social:50, selfCare:50, will:50,
+    imagination:50, selfControl:50, concentration:50,
+    inquire:50, creativity:50, patience:50, independence:50
   },
-  stats:{
-    studyLevel:"medium",
-    finance:"low"
-  },
-  flags:{
-    familyBond:""
-  },
+  stats:{ studyLevel:"medium", finance:"low" },
+  flags:{ familyBond:"" },
   age:0,
   stage:"start",
   eventIndex:0,
@@ -240,7 +220,8 @@ let gameState = {
 };
 
 let isAdminMode = false;
-let skipTimeoutId = null;
+let currentTimeout = null;
+let currentInterval = null;
 
 const STORAGE_MODE = "prototype"; 
 
@@ -250,10 +231,7 @@ const gameStorage = {
       try{
         localStorage.setItem("lifeGameSave", JSON.stringify(saveData));
         return true;
-      }catch(e){
-        console.error("本地存檔失敗", e);
-        return false;
-      }
+      }catch(e){ return false; }
     }
   },
   async load() {
@@ -262,27 +240,11 @@ const gameStorage = {
         const raw = localStorage.getItem("lifeGameSave");
         if(raw) return JSON.parse(raw);
         return null;
-      }catch(e){
-        console.error("載入存檔失敗",e);
-        return null;
-      }
-    }
-  },
-  async getUserPermission() {
-    if(STORAGE_MODE === "prototype"){
-      let perm = JSON.parse(localStorage.getItem("lifeGamePermission") || '{"freeTrialUsed":false,"freeTrialStage":"","ownedDLC":[]}');
-      return perm;
-    }
-  },
-  async setUserPermission(permissionObj) {
-    if(STORAGE_MODE === "prototype"){
-      localStorage.setItem("lifeGamePermission", JSON.stringify(permissionObj));
-      return true;
+      }catch(e){ return null; }
     }
   }
 }
 
-// 翻譯字典（已補充新屬性）
 const trans = {
   gender: {male:"男", female:"女"},
   orientation: {hetero:"異性戀", homo:"同性戀", bi:"雙性戀", pan:"泛性戀", asexual:"無性戀"},
@@ -291,36 +253,18 @@ const trans = {
   finance: {low:"低", medium:"中等", high:"高"},
   stage: {
     start:"開局｜抽先天屬性",
-    age0_spring:"0歲春季",
-    age0_summer:"0歲夏季",
-    age0_autumn:"0歲秋季",
-    age0_winter:"0歲冬季",
-    age1_spring:"1歲春季",
-    age1_summer:"1歲夏季",
-    age1_autumn:"1歲秋季",
-    age1_winter:"1歲冬季",
-    age2_spring:"2歲春季",
-    age2_summer:"2歲夏季",
-    age2_autumn:"2歲秋季",
-    age2_winter:"2歲冬季",
-    age3_spring:"3歲春季",
-    age3_summer:"3歲夏季",
-    age3_autumn:"3歲秋季",
-    age3_winter:"3歲冬季",
-    childhoodEvent:"童年事件階段",
-    age15Choice:"15歲抉擇階段"
+    age0_spring:"0歲春季", age0_summer:"0歲夏季", age0_autumn:"0歲秋季", age0_winter:"0歲冬季",
+    age1_spring:"1歲春季", age1_summer:"1歲夏季", age1_autumn:"1歲秋季", age1_winter:"1歲冬季",
+    age2_spring:"2歲春季", age2_summer:"2歲夏季", age2_autumn:"2歲秋季", age2_winter:"2歲冬季",
+    age3_spring:"3歲春季", age3_summer:"3歲夏季", age3_autumn:"3歲秋季", age3_winter:"3歲冬季",
+    childhoodEvent:"童年事件階段", age15Choice:"15歲抉擇階段"
   },
   origin:{
-    localHK:"香港本地土生家庭",
-    uk:"英國背景回流家庭",
-    sg:"新加坡背景家庭",
-    cnMainland:"內地新移民家庭",
-    southAsia:"南亞裔家庭",
-    others:"其他海外背景家庭"
+    localHK:"香港本地土生家庭", uk:"英國背景回流家庭", sg:"新加坡背景家庭",
+    cnMainland:"內地新移民家庭", southAsia:"南亞裔家庭", others:"其他海外背景家庭"
   }
 };
 
-// 全球國家權重池
 const worldCountryWeightList = [
   {name:"日本", weight:22}, {name:"大韓民國", weight:20}, {name:"中華民國(台灣)", weight:19},
   {name:"新加坡", weight:18}, {name:"馬來西亞", weight:16}, {name:"泰國", weight:15},
@@ -335,141 +279,25 @@ const worldCountryWeightList = [
   {name:"西班牙", weight:7}, {name:"荷蘭", weight:6}, {name:"瑞典", weight:5}, {name:"瑞士", weight:5}
 ];
 
-// 香港18區居所資料庫
 const hkDistrictResidenceList = [
-  {
-    district:"油尖旺區",
-    residences:[
-      {type:"公共屋邨", name:"海富苑"}, {type:"公共屋邨", name:"富榮花園"},
-      {type:"私人屋苑", name:"嘉文花園"}, {type:"豪宅", name:"凱旋門"},
-      {type:"私人屋苑", name:"君滙港"}, {type:"私人屋苑", name:"港灣豪庭"},
-      {type:"唐樓", name:"大同新邨"}, {type:"唐樓", name:"佐敦舊唐樓"}, {type:"單棟唐樓", name:"大角咀舊樓"}
-    ]
-  },
-  {
-    district:"深水埗區",
-    residences:[
-      {type:"公共屋邨", name:"李鄭屋邨"}, {type:"公共屋邨", name:"元州邨"},
-      {type:"公共屋邨", name:"幸福邨"}, {type:"公共屋邨", name:"麗閣邨"},
-      {type:"公共屋邨", name:"南昌邨"}, {type:"私人大型屋苑", name:"美孚新邨"},
-      {type:"唐樓", name:"長沙灣唐樓"}, {type:"舊式洋樓", name:"深水埗舊洋樓"}
-    ]
-  },
-  {
-    district:"九龍城區",
-    residences:[
-      {type:"私人屋苑", name:"黃埔花園"}, {type:"公共屋邨", name:"愛民邨"},
-      {type:"公共屋邨", name:"何文田邨"}, {type:"公共屋邨", name:"紅磡邨"},
-      {type:"私人屋苑", name:"海逸豪園"}, {type:"唐樓", name:"土瓜灣唐樓"}
-    ]
-  },
-  {
-    district:"黃大仙區",
-    residences:[
-      {type:"公共屋邨", name:"黃大仙下邨"}, {type:"公共屋邨", name:"竹園北邨"},
-      {type:"公共屋邨", name:"彩雲邨"}, {type:"公共屋邨", name:"啟晴邨"}, {type:"公共屋邨", name:"德朗邨"}
-    ]
-  },
-  {
-    district:"觀塘區",
-    residences:[
-      {type:"公共屋邨", name:"牛頭角下邨"}, {type:"公共屋邨", name:"樂華邨"},
-      {type:"公共屋邨", name:"順利邨"}, {type:"私人屋苑", name:"麗晶花園"},
-      {type:"私人屋苑", name:"淘大花園"}, {type:"唐樓", name:"觀塘舊唐樓"}
-    ]
-  },
-  {
-    district:"中西區",
-    residences:[
-      {type:"私人屋苑", name:"寶翠園"}, {type:"私人屋苑", name:"雍景臺"},
-      {type:"豪宅", name:"羅便臣道80號"}, {type:"唐樓", name:"荷李活華庭"}
-    ]
-  },
-  {
-    district:"灣仔區",
-    residences:[
-      {type:"私人屋苑", name:"駿逸峰"}, {type:"私人屋苑", name:"囍滙"},
-      {type:"豪宅", name:"帝景園"}, {type:"私人屋苑", name:"尚翹峰"}, {type:"唐樓", name:"灣仔舊唐樓"}
-    ]
-  },
-  {
-    district:"東區",
-    residences:[
-      {type:"公共屋邨", name:"杏花邨"}, {type:"公共屋邨", name:"耀東邨"},
-      {type:"公共屋邨", name:"興東邨"}, {type:"私人屋苑", name:"康怡花園"}, {type:"私人屋苑", name:"太古城"}
-    ]
-  },
-  {
-    district:"南區",
-    residences:[
-      {type:"私人屋苑", name:"香港仔中心"}, {type:"公共屋邨", name:"華富邨"},
-      {type:"私人屋苑", name:"海怡半島"}, {type:"私人屋苑", name:"薄扶林花園"}
-    ]
-  },
-  {
-    district:"荃灣區",
-    residences:[
-      {type:"公共屋邨", name:"綠楊新邨"}, {type:"公共屋邨", name:"福來邨"},
-      {type:"私人屋苑", name:"海濱花園"}, {type:"私人屋苑", name:"荃威花園"}
-    ]
-  },
-  {
-    district:"葵青區",
-    residences:[
-      {type:"公共屋邨", name:"葵盛東邨"}, {type:"公共屋邨", name:"石籬邨"},
-      {type:"公共屋邨", name:"荔景邨"}, {type:"公共屋邨", name:"青衣邨"}, {type:"私人屋苑", name:"灝景灣"}
-    ]
-  },
-  {
-    district:"沙田區",
-    residences:[
-      {type:"公共屋邨", name:"美林邨"}, {type:"公共屋邨", name:"恆安邨"},
-      {type:"公共屋邨", name:"沙角邨"}, {type:"豪宅", name:"名城"}, {type:"私人屋苑", name:"第一城"}
-    ]
-  },
-  {
-    district:"大埔區",
-    residences:[
-      {type:"公共屋邨", name:"富善邨"}, {type:"公共屋邨", name:"廣福邨"},
-      {type:"私人屋苑", name:"大埔廣場"}, {type:"私人屋苑", name:"寶湖花園"}
-    ]
-  },
-  {
-    district:"北區",
-    residences:[
-      {type:"公共屋邨", name:"彩園邨"}, {type:"公共屋邨", name:"太平邨"},
-      {type:"公共屋邨", name:"嘉福邨"}, {type:"私人屋苑", name:"粉嶺中心"}
-    ]
-  },
-  {
-    district:"元朗區",
-    residences:[
-      {type:"公共屋邨", name:"朗屏邨"}, {type:"公共屋邨", name:"天耀邨"},
-      {type:"公共屋邨", name:"天瑞邨"}, {type:"私人屋苑", name:"嘉湖山莊"}, {type:"村屋", name:"元朗鄉村村屋"}
-    ]
-  },
-  {
-    district:"屯門區",
-    residences:[
-      {type:"公共屋邨", name:"良景邨"}, {type:"公共屋邨", name:"田景邨"},
-      {type:"公共屋邨", name:"兆康苑"}, {type:"私人屋苑", name:"恆福花園"}, {type:"私人屋苑", name:"龍門居"}
-    ]
-  },
-  {
-    district:"西貢區",
-    residences:[
-      {type:"公共屋邨", name:"寶林邨"}, {type:"公共屋邨", name:"景林邨"},
-      {type:"公共屋邨", name:"尚德邨"}, {type:"私人屋苑", name:"將軍澳中心"},
-      {type:"私人屋苑", name:"東港城"}, {type:"村屋", name:"西貢鄉村村屋"}
-    ]
-  },
-  {
-    district:"離島區",
-    residences:[
-      {type:"公共屋邨", name:"東涌逸東邨"}, {type:"公共屋邨", name:"東涌富東邨"},
-      {type:"私人屋苑", name:"愉景灣"}, {type:"村屋", name:"梅窩銀礦灣村屋"}
-    ]
-  }
+  { district:"油尖旺區", residences:[{type:"公共屋邨", name:"海富苑"}, {type:"公共屋邨", name:"富榮花園"}, {type:"私人屋苑", name:"嘉文花園"}, {type:"豪宅", name:"凱旋門"}, {type:"私人屋苑", name:"君滙港"}, {type:"私人屋苑", name:"港灣豪庭"}, {type:"唐樓", name:"大同新邨"}, {type:"唐樓", name:"佐敦舊唐樓"}, {type:"單棟唐樓", name:"大角咀舊樓"}] },
+  { district:"深水埗區", residences:[{type:"公共屋邨", name:"李鄭屋邨"}, {type:"公共屋邨", name:"元州邨"}, {type:"公共屋邨", name:"幸福邨"}, {type:"公共屋邨", name:"麗閣邨"}, {type:"公共屋邨", name:"南昌邨"}, {type:"私人大型屋苑", name:"美孚新邨"}, {type:"唐樓", name:"長沙灣唐樓"}, {type:"舊式洋樓", name:"深水埗舊洋樓"}] },
+  { district:"九龍城區", residences:[{type:"私人屋苑", name:"黃埔花園"}, {type:"公共屋邨", name:"愛民邨"}, {type:"公共屋邨", name:"何文田邨"}, {type:"公共屋邨", name:"紅磡邨"}, {type:"私人屋苑", name:"海逸豪園"}, {type:"唐樓", name:"土瓜灣唐樓"}] },
+  { district:"黃大仙區", residences:[{type:"公共屋邨", name:"黃大仙下邨"}, {type:"公共屋邨", name:"竹園北邨"}, {type:"公共屋邨", name:"彩雲邨"}, {type:"公共屋邨", name:"啟晴邨"}, {type:"公共屋邨", name:"德朗邨"}] },
+  { district:"觀塘區", residences:[{type:"公共屋邨", name:"牛頭角下邨"}, {type:"公共屋邨", name:"樂華邨"}, {type:"公共屋邨", name:"順利邨"}, {type:"私人屋苑", name:"麗晶花園"}, {type:"私人屋苑", name:"淘大花園"}, {type:"唐樓", name:"觀塘舊唐樓"}] },
+  { district:"中西區", residences:[{type:"私人屋苑", name:"寶翠園"}, {type:"私人屋苑", name:"雍景臺"}, {type:"豪宅", name:"羅便臣道80號"}, {type:"唐樓", name:"荷李活華庭"}] },
+  { district:"灣仔區", residences:[{type:"私人屋苑", name:"駿逸峰"}, {type:"私人屋苑", name:"囍滙"}, {type:"豪宅", name:"帝景園"}, {type:"私人屋苑", name:"尚翹峰"}, {type:"唐樓", name:"灣仔舊唐樓"}] },
+  { district:"東區", residences:[{type:"公共屋邨", name:"杏花邨"}, {type:"公共屋邨", name:"耀東邨"}, {type:"公共屋邨", name:"興東邨"}, {type:"私人屋苑", name:"康怡花園"}, {type:"私人屋苑", name:"太古城"}] },
+  { district:"南區", residences:[{type:"私人屋苑", name:"香港仔中心"}, {type:"公共屋邨", name:"華富邨"}, {type:"私人屋苑", name:"海怡半島"}, {type:"私人屋苑", name:"薄扶林花園"}] },
+  { district:"荃灣區", residences:[{type:"公共屋邨", name:"綠楊新邨"}, {type:"公共屋邨", name:"福來邨"}, {type:"私人屋苑", name:"海濱花園"}, {type:"私人屋苑", name:"荃威花園"}] },
+  { district:"葵青區", residences:[{type:"公共屋邨", name:"葵盛東邨"}, {type:"公共屋邨", name:"石籬邨"}, {type:"公共屋邨", name:"荔景邨"}, {type:"公共屋邨", name:"青衣邨"}, {type:"私人屋苑", name:"灝景灣"}] },
+  { district:"沙田區", residences:[{type:"公共屋邨", name:"美林邨"}, {type:"公共屋邨", name:"恆安邨"}, {type:"公共屋邨", name:"沙角邨"}, {type:"豪宅", name:"名城"}, {type:"私人屋苑", name:"第一城"}] },
+  { district:"大埔區", residences:[{type:"公共屋邨", name:"富善邨"}, {type:"公共屋邨", name:"廣福邨"}, {type:"私人屋苑", name:"大埔廣場"}, {type:"私人屋苑", name:"寶湖花園"}] },
+  { district:"北區", residences:[{type:"公共屋邨", name:"彩園邨"}, {type:"公共屋邨", name:"太平邨"}, {type:"公共屋邨", name:"嘉福邨"}, {type:"私人屋苑", name:"粉嶺中心"}] },
+  { district:"元朗區", residences:[{type:"公共屋邨", name:"朗屏邨"}, {type:"公共屋邨", name:"天耀邨"}, {type:"公共屋邨", name:"天瑞邨"}, {type:"私人屋苑", name:"嘉湖山莊"}, {type:"村屋", name:"元朗鄉村村屋"}] },
+  { district:"屯門區", residences:[{type:"公共屋邨", name:"良景邨"}, {type:"公共屋邨", name:"田景邨"}, {type:"公共屋邨", name:"兆康苑"}, {type:"私人屋苑", name:"恆福花園"}, {type:"私人屋苑", name:"龍門居"}] },
+  { district:"西貢區", residences:[{type:"公共屋邨", name:"寶林邨"}, {type:"公共屋邨", name:"景林邨"}, {type:"公共屋邨", name:"尚德邨"}, {type:"私人屋苑", name:"將軍澳中心"}, {type:"私人屋苑", name:"東港城"}, {type:"村屋", name:"西貢鄉村村屋"}] },
+  { district:"離島區", residences:[{type:"公共屋邨", name:"東涌逸東邨"}, {type:"公共屋邨", name:"東涌富東邨"}, {type:"私人屋苑", name:"愉景灣"}, {type:"村屋", name:"梅窩銀礦灣村屋"}] }
 ];
 
 const storyDistrictToHKAdminDistrict = {
@@ -481,7 +309,6 @@ const storyDistrictToHKAdminDistrict = {
 const genderList = ["male","female"];
 const orientationList = ["hetero","homo","bi","pan","asexual"];
 
-// 童年微型事件庫
 const childhoodEvents = [
   {
     text:"小學時，班裡組織課外活動，同學邀請你一齊參加。",
@@ -506,50 +333,30 @@ const childhoodEvents = [
   }
 ];
 
-// 15歲最終3個大選項
 const finalAge15Choices = [
-  {
-    text:"專心讀書，希望爭取好成績",
-    effect:()=>{
-      gameState.stats.studyLevel = "high";
-      gameState.stats.finance = "low";
-    }
-  },
-  {
-    text:"投入自己嘅興趣愛好，發展專長",
-    effect:()=>{
-      gameState.stats.studyLevel = "medium";
-      gameState.stats.finance = "low";
-    }
-  },
-  {
-    text:"希望出社會工作，早點賺錢",
-    effect:()=>{
-      gameState.stats.studyLevel = "low";
-      gameState.stats.finance = "medium";
-    }
-  }
+  { text:"專心讀書，希望爭取好成績", effect:()=>{ gameState.stats.studyLevel = "high"; gameState.stats.finance = "low"; } },
+  { text:"投入自己嘅興趣愛好，發展專長", effect:()=>{ gameState.stats.studyLevel = "medium"; gameState.stats.finance = "low"; } },
+  { text:"希望出社會工作，早點賺錢", effect:()=>{ gameState.stats.studyLevel = "low"; gameState.stats.finance = "medium"; } }
 ];
 
-// 劇情分支跳轉清單
 const jumpList = [
   {name:"開局｜抽先天屬性", fn:()=>showStartScreen()},
-  {name:"0歲·春", fn:()=>jumpToAge0Spring()},
-  {name:"0歲·夏", fn:()=>jumpToAge0Summer()},
-  {name:"0歲·秋", fn:()=>jumpToAge0Autumn()},
-  {name:"0歲·冬", fn:()=>jumpToAge0Winter()},
-  {name:"1歲·春", fn:()=>jumpToAge1Spring()},
-  {name:"1歲·夏", fn:()=>jumpToAge1Summer()},
-  {name:"1歲·秋", fn:()=>jumpToAge1Autumn()},
-  {name:"1歲·冬", fn:()=>jumpToAge1Winter()},
-  {name:"2歲·春", fn:()=>jumpToAge2Spring()},
-  {name:"2歲·夏", fn:()=>jumpToAge2Summer()},
-  {name:"2歲·秋", fn:()=>jumpToAge2Autumn()},
-  {name:"2歲·冬", fn:()=>jumpToAge2Winter()},
-  {name:"3歲·春", fn:()=>jumpToAge3Spring()},
-  {name:"3歲·夏", fn:()=>jumpToAge3Summer()},
-  {name:"3歲·秋", fn:()=>jumpToAge3Autumn()},
-  {name:"3歲·冬", fn:()=>jumpToAge3Winter()},
+  {name:"0歲·春", fn:()=>runAge0Spring()},
+  {name:"0歲·夏", fn:()=>runAge0Summer()},
+  {name:"0歲·秋", fn:()=>runAge0Autumn()},
+  {name:"0歲·冬", fn:()=>runAge0Winter()},
+  {name:"1歲·春", fn:()=>runAge1Spring()},
+  {name:"1歲·夏", fn:()=>runAge1Summer()},
+  {name:"1歲·秋", fn:()=>runAge1Autumn()},
+  {name:"1歲·冬", fn:()=>runAge1Winter()},
+  {name:"2歲·春", fn:()=>runAge2Spring()},
+  {name:"2歲·夏", fn:()=>runAge2Summer()},
+  {name:"2歲·秋", fn:()=>runAge2Autumn()},
+  {name:"2歲·冬", fn:()=>runAge2Winter()},
+  {name:"3歲·春", fn:()=>runAge3Spring()},
+  {name:"3歲·夏", fn:()=>runAge3Summer()},
+  {name:"3歲·秋", fn:()=>runAge3Autumn()},
+  {name:"3歲·冬", fn:()=>runAge3Winter()},
   {name:"童年事件起點", fn:()=>jumpToChildhood()},
   {name:"15歲選擇畫面", fn:()=>jumpToAge15()}
 ];
@@ -557,12 +364,15 @@ const jumpList = [
 const $ = s=>document.querySelector(s);
 const $$ = s=>document.querySelectorAll(s);
 
-function renderStory(txt){
-  $("#story").innerText = txt;
+function clearTimeouts(){
+  if(currentTimeout) clearTimeout(currentTimeout);
+  if(currentInterval) clearInterval(currentInterval);
 }
+
 function clearChoices(){
   $("#choices").innerHTML="";
 }
+
 function addChoice(text, callback){
   let btn = document.createElement("button");
   btn.className="choice-btn";
@@ -571,36 +381,87 @@ function addChoice(text, callback){
   $("#choices").appendChild(btn);
 }
 
-// 自動跳轉劇本顯示函數
-function showAutoStory(storyText, nextCallback){
+// ===================== 【核心升級：逐句顯現、前一句消失、打字機效果】 =====================
+/**
+ * @param {string} fullText 完整劇本文字
+ * @param {Function} onComplete 播完所有句子後的回調函數
+ * @param {boolean} showSkipBtn 是否顯示「跳過劇本」按鈕
+ */
+function playSequentialStory(fullText, onComplete, showSkipBtn = true){
+  clearTimeouts();
   clearChoices();
-  if(skipTimeoutId) clearTimeout(skipTimeoutId);
 
-  renderStory(storyText);
-  const charCount = storyText.length;
-  const waitMs = Math.max(5000, charCount * 50);
-
-  const skipBtn = document.createElement("button");
-  skipBtn.className = "skip-btn";
-  skipBtn.innerText = "⏭️ 跳過劇本";
-  skipBtn.onclick = function(){
-    clearTimeout(skipTimeoutId);
-    nextCallback();
+  // 1. 將整段劇本按標點符號與換行符號自動切分成一句句短句，過濾空白
+  let rawSentences = fullText.split(/([。！？\n])/);
+  let sentences = [];
+  let currentSentence = "";
+  
+  for(let i=0; i<rawSentences.length; i++){
+    currentSentence += rawSentences[i];
+    if(/[。！？\n]/.test(rawSentences[i]) || i === rawSentences.length - 1){
+      if(currentSentence.trim().length > 0){
+        sentences.push(currentSentence.trim());
+      }
+      currentSentence = "";
+    }
   }
-  $("#choices").appendChild(skipBtn);
 
-  skipTimeoutId = setTimeout(()=>{
-    nextCallback();
-  }, waitMs);
+  let index = 0;
+  const storyEl = $("#story");
 
+  // 如果需要顯示跳過按鈕
+  if(showSkipBtn){
+    const skipBtn = document.createElement("button");
+    skipBtn.className = "skip-btn";
+    skipBtn.innerText = "⏭️ 跳過劇本";
+    skipBtn.onclick = function(){
+      clearTimeouts();
+      onComplete();
+    }
+    $("#choices").appendChild(skipBtn);
+  }
+
+  function playNextSentence(){
+    if(index >= sentences.length){
+      // 播完了
+      currentTimeout = setTimeout(()=>{
+        onComplete();
+      }, 800);
+      return;
+    }
+
+    let textToType = sentences[index];
+    index++;
+    storyEl.innerText = "";
+    storyEl.style.opacity = 1;
+
+    let charIdx = 0;
+    // 打字機速度：每 35ms 顯示一個字（一般GALGAME流暢閱讀速度）
+    currentInterval = setInterval(()=>{
+      if(charIdx < textToType.length){
+        storyEl.innerText += textToType.charAt(charIdx);
+        charIdx++;
+      }else{
+        clearInterval(currentInterval);
+        
+        // 句子打完後，計算停留閱讀時間（字數越長停越久，最少 1800ms）
+        let readWaitTime = Math.max(1800, textToType.length * 110);
+        
+        currentTimeout = setTimeout(()=>{
+          // 淡出效果準備換下一句
+          storyEl.style.opacity = 0;
+          currentTimeout = setTimeout(()=>{
+            playNextSentence();
+          }, 300); // 配合 CSS transition 300ms
+        }, readWaitTime);
+      }
+    }, 35);
+  }
+
+  playNextSentence();
   refreshTagDisplay();
 }
 
-function showLog(txt){
-  $("#log").innerText = txt;
-}
-
-// 更新隱藏標籤
 function refreshTagDisplay(){
   const g = gameState;
   const txt = `【隱藏標籤】
@@ -635,7 +496,6 @@ function refreshTagDisplay(){
   $("#tagInfo").innerText = txt;
 }
 
-// 抽國籍
 function rollNationality(){
   const r = Math.random();
   let nation;
@@ -691,34 +551,26 @@ function checkAgeNationalityChange(){
   }
 }
 
-// 獲取家境描述文字
 function getWealthDesc(){
   switch(gameState.birth.familyWealth){
-    case "poor":
-      return "屋企單位細，環境簡樸，父母要長時間返工先夠維持生計，照顧你嘅時間有限。";
-    case "middle":
-      return "家境普通，衣食無憂，但唔會有太多多餘錢使喺玩樂同興趣上面。";
-    case "rich":
-      return "家境優渥，住所設備齊全，父母有充足時間同資源照顧你成長。";
+    case "poor": return "屋企單位細，環境簡樸，父母要長時間返工先夠維持生計，照顧你嘅時間有限。";
+    case "middle": return "家境普通，衣食無憂，但唔會有太多多餘錢使喺玩樂同興趣上面。";
+    case "rich": return "家境優渥，住所設備齊全，父母有充足時間同資源照顧你成長。";
   }
   return "";
 }
 
-// 開局畫面
+// 開局畫面（改為直接顯示靜態，點擊按鈕才開始）
 function showStartScreen(){
+  clearTimeouts();
   clearChoices();
   gameState.stage = "start";
   gameState.birthLocked = false;
   rollBirthAttributes();
   const bioText = generateBirthBackground(gameState);
-  renderStory(`新的人生即將開始。
-${bioText}
+  
+  $("#story").innerText = `新的人生即將開始。\n${bioText}\n\n居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」\n國籍：${gameState.birth.birthCountry}\n\n你的出身條件已經隨機生成。`;
 
-居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」
-國籍：${gameState.birth.birthCountry}
-
-你的出身條件已經隨機生成。
-你可以重新抽一次先天設定，或者直接開始成長旅程。`);
   addChoice("開始新一局", async ()=>{
     gameState.birthLocked = true;
     gameState.age = 0;
@@ -729,23 +581,13 @@ ${bioText}
     runAge0Spring();
   });
   addChoice("重新抽取先天屬性", ()=>{
-    rollBirthAttributes();
-    const bioText = generateBirthBackground(gameState);
-    renderStory(`已重新隨機抽取出身設定。
-${bioText}
-
-居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」
-國籍：${gameState.birth.birthCountry}
-
-你可以再次重抽，或者直接開始。`);
-    refreshTagDisplay();
+    showStartScreen();
   });
   refreshTagDisplay();
 }
 
-// ================== 0至3歲完整四季劇情鏈 ==================
+// ================== 0至3歲四季劇情鏈 ==================
 
-// 0歲·春
 function runAge0Spring(){
   gameState.stage = "age0_spring";
   gameState.age = 0;
@@ -755,696 +597,667 @@ function runAge0Spring(){
 國籍：${gameState.birth.birthCountry}｜出生於香港${gameState.birth.district}，居於${gameState.birth.residenceType}「${gameState.birth.residenceName}」
 
 ${wealthDesc}
-眼皮前只有一片朦朧嘅光影，世界好似冚住咗一層溫柔嘅紗。耳邊傳來爸爸媽媽同屋企人軟綿綿嘅說話聲，呢啲係你降臨呢個世界聽到嘅第一首催眠曲，其實你根本都唔知佢哋講緊乜。
-你仲未識講嘢同聽野，亦未識企起身行路，只係識得用細細聲嘅喊鬧、扭下扭下嘅身仔，同埋無意間勾起一抹笑意嘅嘴仔，或者伸伸懶腰、打打喊露去同呢個陌生/第一次接觸嘅世界打招呼，表達你所有依賴同需要。
-日子好似微風咁過得好快，呢三個月裡面，嗰啲原本迷迷糊糊嘅影，漸漸變成了你最熟悉、最溫暖嘅面孔。你好似開始認得呢啲影像，感覺好安全。佢哋唔會傷害你，只要一聽到佢哋嘅聲音，你所有嘅不安就會即刻煙消雲散，每一次都可以換來最平靜、最安心嘅好眠。
-就係咁，你帶住濃濃嘅愛，正式展開你漫長又美好嘅一生。
+眼皮前只有一片朦朧嘅光影，世界好似冚住咗一層溫柔嘅紗。
+耳邊傳來爸爸媽媽同屋企人軟綿綿嘅說話聲，呢啲係你降臨呢個世界聽到嘅第一首催眠曲。
+你仲未識講嘢同聽野，亦未識企起身行路，只係識得用細細聲嘅喊鬧去表達需要。
+日子好似微風咁過得好快，呢三個月裡面，嗰啲迷迷糊糊嘅影，變成了最熟悉、最溫暖嘅面孔。
+只要一聽到佢哋嘅聲音，你所有嘅不安就會即刻煙消雲散。
 歡迎你嚟到呢個世界喇，BB仔……`;
 
-  showAutoStory(storyText, async ()=>{
+  playSequentialStory(storyText, async ()=>{
     gameState.stage = "age0_summer";
     await gameStorage.save(gameState);
     runAge0Summer();
   });
 }
 
-// 0歲·夏
 function runAge0Summer(){
   gameState.stage = "age0_summer";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `0歲 · 嬰兒時期（夏）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 
 ${wealthDesc}
-炎熱嘅夏季，冷氣同風扇輪流轉動，空氣帶住淡淡嘅奶味。而你，被爸爸媽媽包到成隻粽咁，全身都出曬汗，只因為佢哋驚你身體機能發展未成熟，所以先至會咁做。
-你依家開始識轉身，訓覺嘅時候會不自覺由仰訓轉成側身。
-媽媽瞓覺都會將你擺喺身邊，方便照顧。但亦都驚佢龐大嘅身軀，一個唔小心嘅轉身就會壓到你窒息死亡，所以呢3個月佢都冇一晚有覺好瞓。
-有時佢會攬住你坐喺梳化，同你講好多冇人明白嘅閒話，爸爸又會拎住彩色嘅搖鈴喺你眼前輕輕搖動，引你注意同你玩。
-你目光會跟住搖鈴移動，偶然嘗試伸出自己細細嘅小手，盡力去抓呢個會發聲嘅物體。但你發覺，你好似永遠都控制唔住呢隻手。
-有一次你終於捉住咗搖鈴，手一握，鈴聲響起，你唔知發生咩事，因為係第一次，所以你嘅感覺好奇妙。你瞪大眼睛，想了解呢啲係咩感覺？到底發生咩事，然後不由自主地「𠺝𠺝」聲咁笑出嚟。
+炎熱嘅夏季，冷氣同風扇輪流轉動，空氣帶住淡淡嘅奶味。
+你被爸爸媽媽包到成隻粽咁，全身都出曬汗，只因為驚你身體機能發展未成熟。
+爸爸拎住彩色嘅搖鈴喺你眼前輕輕搖動，引你注意同你玩。
+有一次你終於捉住咗搖鈴，鈴聲響起，你瞪大眼睛，不由自主地「𠺝𠺝」聲咁笑出嚟。
 爸爸媽媽望住你呢個樣，都忍唔住跟住笑，輕輕錫下你嘅額頭。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母持續用不同顏色、發聲玩具互動，不斷刺激視覺觸覺，但你每日都好攰", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.flags.memory_0s_summer = "rattle_playful";
-    gameState.stage = "age0_autumn";
-    await gameStorage.save(gameState);
-    runAge0Autumn();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母對你探索行為嘅回應：";
+    addChoice("A｜父母持續用不同顏色、發聲玩具互動，不斷刺激視覺觸覺，但你每日都好攰", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.flags.memory_0s_summer = "rattle_playful";
+      gameState.stage = "age0_autumn";
+      await gameStorage.save(gameState);
+      runAge0Autumn();
+    });
+    addChoice("B｜父母偶爾拎搖鈴逗你，玩一陣就等你休息吓，想你學識獨處", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 4);
+      gameState.flags.memory_0s_summer = "rattle_calm";
+      gameState.stage = "age0_autumn";
+      await gameStorage.save(gameState);
+      runAge0Autumn();
+    });
+    addChoice("C｜父母害怕玩具物料含毒素，好少拎玩具，多數淨係睇住你訓覺", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.flags.memory_0s_summer = "rattle_rare";
+      gameState.stage = "age0_autumn";
+      await gameStorage.save(gameState);
+      runAge0Autumn();
+    });
   });
-  addChoice("B｜父母偶爾拎搖鈴逗你，玩一陣就等你休息吓，想你學識獨處", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 4);
-    gameState.flags.memory_0s_summer = "rattle_calm";
-    gameState.stage = "age0_autumn";
-    await gameStorage.save(gameState);
-    runAge0Autumn();
-  });
-  addChoice("C｜父母害怕玩具物料含毒素，好少拎玩具，多數淨係睇住你訓覺，以營養情感為先", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.flags.memory_0s_summer = "rattle_rare";
-    gameState.stage = "age0_autumn";
-    await gameStorage.save(gameState);
-    runAge0Autumn();
-  });
-  refreshTagDisplay();
 }
 
-// 0歲·秋
 function runAge0Autumn(){
   gameState.stage = "age0_autumn";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `0歲 · 嬰兒時期（秋）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 
 ${wealthDesc}
 秋風變涼，窗外面嘅樹葉慢慢轉黃。
-你開始識得四處爬，會喺任何地方探索呢個“所謂”屋企，感受呢個你住咗9個月嘅地方嘅每一個角落。
-有日父母忙緊家務，冇睇實你，你爬到客廳門口，見到門縫竟然會有光透入嚟，你好好奇想繼續向前探索。
-媽媽及時發現，快步過來將你抱起，輕輕同你講唔可以亂爬出去，聲音溫柔但帶住提醒。
-你唔明白佢說話嘅意思，但聽得出語氣有少少唔同，你停下動作，抬頭望住媽媽嘅表情，希望搵得到由表情帶出嚟嘅情報，知道到底發生咩事。
-有時父母離開房間一陣，唔見咗佢哋，冇咗熟悉嘅感覺，令你好驚慌，你就扁嘴開始喊，希望呢把喊聲令佢哋聽到、知道你嘅需要，引導佢哋返嚟陪你。當聽到佢哋返來嘅腳步聲，熟悉感同安全感返返嚟，你得到滿足、感覺安全，喊聲就會慢慢收細。`;
+你開始識得四處爬，會喺任何地方探索呢個屋企嘅每一個角落。
+有日父母忙緊家務，你爬到客廳門口，見到門縫竟然會有光透入嚟。
+媽媽及時發現，快步過來將你抱起，溫柔同你講唔可以亂爬出去。
+有時父母離開房間一陣，唔見咗佢哋，令你好驚慌，扁嘴開始喊。
+聽到返來嘅腳步聲，安全感返返嚟，喊聲慢慢收細。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母做好安全防護，放手畀你隨意周圍爬探索，喊嗰陣等一陣先過來安撫", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.attachment = Math.min(100, gameState.trait.attachment + 2);
-    gameState.flags.memory_0s_autumn = "crawl_encourage";
-    gameState.stage = "age0_winter";
-    await gameStorage.save(gameState);
-    runAge0Winter();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你亂爬同分離焦慮嘅應對方式：";
+    addChoice("A｜父母做好安全防護，放手畀你隨意周圍爬探索，喊嗰陣等一陣先過來安撫", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.attachment = Math.min(100, gameState.trait.attachment + 2);
+      gameState.flags.memory_0s_autumn = "crawl_encourage";
+      gameState.stage = "age0_winter";
+      await gameStorage.save(gameState);
+      runAge0Winter();
+    });
+    addChoice("B｜父母會睇實你，容許有限度探索，喊就安撫，但唔會任由爬去危險位置", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.attachment = Math.min(100, gameState.trait.attachment + 3);
+      gameState.flags.memory_0s_autumn = "crawl_warn";
+      gameState.stage = "age0_winter";
+      await gameStorage.save(gameState);
+      runAge0Winter();
+    });
+    addChoice("C｜父母驚你受傷，多數將你放喺安全圍欄入面，會即刻回應喊聲", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.attachment = Math.min(100, gameState.trait.attachment + 4);
+      gameState.flags.memory_0s_autumn = "crawl_restrict";
+      gameState.stage = "age0_winter";
+      await gameStorage.save(gameState);
+      runAge0Winter();
+    });
   });
-  addChoice("B｜父母會睇實你，容許有限度探索，喊就安撫，但唔會任由你爬去危險位置", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.attachment = Math.min(100, gameState.trait.attachment + 3);
-    gameState.flags.memory_0s_autumn = "crawl_warn";
-    gameState.stage = "age0_winter";
-    await gameStorage.save(gameState);
-    runAge0Winter();
-  });
-  addChoice("C｜父母驚你受傷，多數將你放喺安全圍欄入面，減少亂爬機會；會即刻回應喊聲", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.attachment = Math.min(100, gameState.trait.attachment + 4);
-    gameState.flags.memory_0s_autumn = "crawl_restrict";
-    gameState.stage = "age0_winter";
-    await gameStorage.save(gameState);
-    runAge0Winter();
-  });
-  refreshTagDisplay();
 }
 
-// 0歲·冬
 function runAge0Winter(){
   gameState.stage = "age0_winter";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `0歲 · 嬰兒時期（冬）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 
 ${wealthDesc}
 冬日天氣寒冷，屋企開咗暖爐，被窩同衫都暖笠笠。
-你喺屋企嘅大廳，會捉住傢俬嘅邊緣，嘗試企起身，但腳仔冇力仍然不斷震，企唔穩就會坐返落地氈。
-爸爸會企喺幾步之外，伸出雙手鼓勵你向佢爬過來。
-你嘗試扶住枱邊行，但一鬆手就會向前傾，差啲跌倒，爸爸即刻上前托住你。
-呢個冬天，你開始學識用簡單嘅聲音叫「爸」、「媽」，呢種呼叫，只係你目前可以呼叫父母嘅溝通語言。你只知道咁樣叫，佢哋其中一個一定會笑同關注你。
-每當你發出呢啲聲音，父母就會好興奮，不停回應你，佢哋同你一樣，重複叫“爸爸” “媽媽”，盼你真正認得佢哋。`;
+你喺大廳捉住傢俬邊緣嘗試企起身，但腳仔冇力不斷震。
+爸爸企喺幾步之外，伸出雙手鼓勵你向佢爬過來。
+呢個冬天，你開始學識用簡單嘅聲音叫「爸」、「媽」。
+每當你發出呢啲聲音，父母就會好興奮，不停重複回應你。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母鼓勵你嘗試企同向前行，你發出咿呀聲，就會回應、同你對話", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.bold = Math.min(100, gameState.trait.bold + 3);
-    gameState.flags.memory_0s_winter = "stand_cheer";
-    gameState.stage = "age1_spring";
-    gameState.age = 1;
-    await gameStorage.save(gameState);
-    runAge1Spring();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你嘗試企立同牙牙學語嘅回應：";
+    addChoice("A｜父母鼓勵你嘗試企同向前行，發出咿呀聲就會回應同對話", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.bold = Math.min(100, gameState.trait.bold + 3);
+      gameState.flags.memory_0s_winter = "stand_cheer";
+      gameState.stage = "age1_spring";
+      gameState.age = 1;
+      await gameStorage.save(gameState);
+      runAge1Spring();
+    });
+    addChoice("B｜父母小心睇實你嘗試學習企穩，亦會鼓勵，會回應你嘅牙牙聲", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.bold = Math.min(100, gameState.trait.bold + 2);
+      gameState.flags.memory_0s_winter = "stand_careful";
+      gameState.stage = "age1_spring";
+      gameState.age = 1;
+      await gameStorage.save(gameState);
+      runAge1Spring();
+    });
+    addChoice("C｜父母驚你跌親，唔太勉強你企起身，會回應你的咿呀叫喚", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.flags.memory_0s_winter = "stand_protect";
+      gameState.stage = "age1_spring";
+      gameState.age = 1;
+      await gameStorage.save(gameState);
+      runAge1Spring();
+    });
   });
-  addChoice("B｜父母小心睇實你嘗試學習企穩，亦會鼓勵，會回應你嘅牙牙聲", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.bold = Math.min(100, gameState.trait.bold + 2);
-    gameState.flags.memory_0s_winter = "stand_careful";
-    gameState.stage = "age1_spring";
-    gameState.age = 1;
-    await gameStorage.save(gameState);
-    runAge1Spring();
-  });
-  addChoice("C｜父母驚你跌親，唔太勉強你企起身，會回應你的咿呀叫喚", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.flags.memory_0s_winter = "stand_protect";
-    gameState.stage = "age1_spring";
-    gameState.age = 1;
-    await gameStorage.save(gameState);
-    runAge1Spring();
-  });
-  refreshTagDisplay();
 }
 
-// 1歲·春
 function runAge1Spring(){
   gameState.stage = "age1_spring";
   gameState.age = 1;
   checkAgeNationalityChange();
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `1歲 · 幼兒時期（春）
-國籍：${gameState.birth.birthCountry}｜仍然居於香港${gameState.birth.district}，${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
 冬寒慢慢退去，窗外草木抽出嫩葉，暖風吹入屋企。
-你已經正式滿一歲，雙腳開始有足夠力氣支撐身體。唔使成日扶住傢俬，有時可以獨自企穩幾秒，膽大嘅時候仲會踉踉蹌蹌行幾步，行到腳軟先至坐低。
-你嘅認知同語言進步好多，唔止淨係識講「爸」「媽」。見到杯、公仔、狗狗呢啲常見物件，會試下講簡單單字，有時發音唔清，父母都會好努力去拆解你想表達嘅嘢。
-你開始明白物件恆存呢件事——就算玩具被布冚住，唔見咗，你都知道佢唔係消失咗，會伸手揭開塊布搵返個玩具。
-對周圍一切好奇心越來越重，鍾意將細細件嘅物件拎起、搖下、擺落口試下味道，父母成日要睇實，驚你誤吞細零件。
-有時你會拖住父母嘅手指，拉佢哋去你想去嘅地方，用動作同簡單字詞提出請求，唔再淨係靠喊嚟表達所有需要。
+你已經正式滿一歲，雙腳開始有足夠力氣支撐身體，踉踉蹌蹌行幾步。
+見到杯、公仔、狗狗呢啲常見物件，會試下講簡單單字。
+你開始明白物件恆存——就算玩具被布冚住，都知道佢唔係消失咗。
 呢個春天，你開始真正用自己雙腳，親身探索呢個世界。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母擺大量安全物件畀你隨便摸同研究，發出單字簡單回應，鼓勵自由探索", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.language = Math.min(100, gameState.trait.language + 3);
-    gameState.flags.memory_1s_spring = "explore_object_free";
-    gameState.stage = "age1_summer";
-    await gameStorage.save(gameState);
-    runAge1Summer();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你探索物件、嘗試講單字嘅引導方式：";
+    addChoice("A｜父母擺大量安全物件畀你隨便摸研究，發出單字簡單回應，鼓勵自由探索", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.language = Math.min(100, gameState.trait.language + 3);
+      gameState.flags.memory_1s_spring = "explore_object_free";
+      gameState.stage = "age1_summer";
+      await gameStorage.save(gameState);
+      runAge1Summer();
+    });
+    addChoice("B｜父母揀安全玩具，陪你一齊把玩，一邊講物件名稱，糾正發音適度引導", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.language = Math.min(100, gameState.trait.language + 2);
+      gameState.flags.memory_1s_spring = "explore_object_guide";
+      gameState.stage = "age1_summer";
+      await gameStorage.save(gameState);
+      runAge1Summer();
+    });
+    addChoice("C｜父母不停同你講嘢，重複物件名稱；優先保護安全，限制細件物品", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.language = Math.min(100, gameState.trait.language + 4);
+      gameState.flags.memory_1s_spring = "explore_object_verbal";
+      gameState.stage = "age1_summer";
+      await gameStorage.save(gameState);
+      runAge1Summer();
+    });
   });
-  addChoice("B｜父母揀安全玩具，陪你一齊把玩，一邊講物件名稱，糾正發音適度引導", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.language = Math.min(100, gameState.trait.language + 2);
-    gameState.flags.memory_1s_spring = "explore_object_guide";
-    gameState.stage = "age1_summer";
-    await gameStorage.save(gameState);
-    runAge1Summer();
-  });
-  addChoice("C｜父母不停同你講嘢，重複物件名稱；優先保護安全，限制細件物品", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.language = Math.min(100, gameState.trait.language + 4);
-    gameState.flags.memory_1s_spring = "explore_object_verbal";
-    gameState.stage = "age1_summer";
-    await gameStorage.save(gameState);
-    runAge1Summer();
-  });
-  refreshTagDisplay();
 }
 
-// 1歲·夏
 function runAge1Summer(){
   gameState.stage = "age1_summer";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `1歲 · 幼兒時期（夏）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-盛夏暑氣籠住成個城市，窗外陽光猛烈，屋企長期開住冷氣降溫。
-你而家已經行得比較穩陣，唔再成日跌低。鍾意周圍走來走去，鐘意開櫃門、拉抽屜，將入面嘅衫、雜物全部摵出嚟，好似要拆解屋企所有嘢。
-你開始識得模仿大人嘅動作，見到媽媽抹枱，就會搵塊細布跟住亂抹；見到爸爸拎杯飲水，就會拎自己細水杯學佢舉起。
-情緒變得更加鮮明，鍾意嘅嘢會拍手大笑；唔鍾意嘅，就會搖頭、推開物件，有時仲會發脾氣扭計。你開始有自我意識，明白「呢樣嘢係屬於我」。
-呢段時間你好鍾意同屋企人玩躲貓貓。父母用手遮住塊面，突然攤開，你就會咯咯大笑。呢個遊戲令你好開心，一次又一次想重複玩。
-你仲未識同人分享，見到心儀嘅玩具，會實實紧紧攬住唔肯交出去。呢個就係屬於一歲BB嘅佔有慾。`;
+盛夏暑氣籠住成個城市，屋企長期開住冷氣降溫。
+你行得比較穩陣，鍾意開櫃門、拉抽屜，將入面雜物全部摵出嚟。
+情緒變得更加鮮明，鍾意嘅嘢會拍手大笑，唔鍾意嘅會搖頭推開。
+見到心儀嘅玩具，會實實紧紧攬住唔肯交出去，這就是一歲BB嘅佔有慾。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母唔阻止你亂摸同模仿，任由周圍探索，搶玩具時唔強迫讓出", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.imitate = Math.min(100, gameState.trait.imitate + 3);
-    gameState.flags.memory_1s_summer = "imitate_freedom";
-    gameState.stage = "age1_autumn";
-    await gameStorage.save(gameState);
-    runAge1Autumn();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你模仿行為同佔有慾嘅回應：";
+    addChoice("A｜父母唔阻止你亂摸模仿，任由周圍探索，搶玩具時唔強迫讓出", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.imitate = Math.min(100, gameState.trait.imitate + 3);
+      gameState.flags.memory_1s_summer = "imitate_freedom";
+      gameState.stage = "age1_autumn";
+      await gameStorage.save(gameState);
+      runAge1Autumn();
+    });
+    addChoice("B｜父母陪住一齊模仿遊戲，溫柔教你物件歸屬，不強迫即刻分享", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.imitate = Math.min(100, gameState.trait.imitate + 2);
+      gameState.flags.memory_1s_summer = "imitate_guide";
+      gameState.stage = "age1_autumn";
+      await gameStorage.save(gameState);
+      runAge1Autumn();
+    });
+    addChoice("C｜父母積極回應每一個模仿動作，引導嘗試將玩具遞畀人，教初步分享概念", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.imitate = Math.min(100, gameState.trait.imitate + 4);
+      gameState.flags.memory_1s_summer = "imitate_respond";
+      gameState.stage = "age1_autumn";
+      await gameStorage.save(gameState);
+      runAge1Autumn();
+    });
   });
-  addChoice("B｜父母陪住一齊模仿玩遊戲，溫柔教你物件歸屬，不強迫即刻分享", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.imitate = Math.min(100, gameState.trait.imitate + 2);
-    gameState.flags.memory_1s_summer = "imitate_guide";
-    gameState.stage = "age1_autumn";
-    await gameStorage.save(gameState);
-    runAge1Autumn();
-  });
-  addChoice("C｜父母積極回應每一個模仿動作，引導嘗試將玩具遞畀人，教初步分享概念", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.imitate = Math.min(100, gameState.trait.imitate + 4);
-    gameState.flags.memory_1s_summer = "imitate_respond";
-    gameState.stage = "age1_autumn";
-    await gameStorage.save(gameState);
-    runAge1Autumn();
-  });
-  refreshTagDisplay();
 }
 
-// 1歲·秋
 function runAge1Autumn(){
   gameState.stage = "age1_autumn";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `1歲 · 幼兒時期（秋）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-秋風吹走酷熱，天氣變得清爽，父母有時會推住嬰兒車帶你落樓下公園。
-你見到其他細路喺公園玩，會停低靜靜望住佢哋。你仲唔識同其他小朋友一齊玩平行遊戲以外嘅互動，只會睇住人哋，偶爾行近，又會縮返去父母身後。
-你而家可以講到兩個字嘅短句，例如「要水」「抱我」，開始用簡短句子表達需求，唔再只係單字。
-記憶力都有進步，會記得之前玩過嘅遊戲、見過嘅地方。返到公園，你會記得邊度有鞦韆，會用手指向嗰一邊。
-但同時，你嘅分離焦慮仍然存在。如果父母想離開你視線範圍，你會即刻扁嘴喊，驚佢哋唔返來。有時見到陌生面孔，亦會縮喺父母身後唔肯出聲。`;
+秋風吹走酷熱，父母有時會推住嬰兒車帶你落樓下公園。
+你見到其他細路喺公園玩，會停低靜靜望住佢哋。
+可以講到兩個字嘅短句，例如「要水」「抱我」。
+但分離焦慮仍然存在，如果父母離開視線範圍，你會即刻扁嘴喊。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母帶到公園，但不強迫主動接觸其他小朋友，任由遠距離觀察", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.social = Math.min(100, gameState.trait.social + 2);
-    gameState.flags.memory_1s_autumn = "social_observe";
-    gameState.stage = "age1_winter";
-    await gameStorage.save(gameState);
-    runAge1Winter();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你接觸陌生人、同其他幼兒相處嘅應對方式：";
+    addChoice("A｜父母帶到公園，但不強迫主動接觸其他小朋友，任由遠距離觀察", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.social = Math.min(100, gameState.trait.social + 2);
+      gameState.flags.memory_1s_autumn = "social_observe";
+      gameState.stage = "age1_winter";
+      await gameStorage.save(gameState);
+      runAge1Winter();
+    });
+    addChoice("B｜父母陪喺隔離，介紹其他小朋友認識，鼓勵試下一起玩但不勉強", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.social = Math.min(100, gameState.trait.social + 3);
+      gameState.flags.memory_1s_autumn = "social_lead";
+      gameState.stage = "age1_winter";
+      await gameStorage.save(gameState);
+      runAge1Winter();
+    });
+    addChoice("C｜父母主動帶你同其他細路互動，幫你開啟交流，引導習慣面對陌生人", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.social = Math.min(100, gameState.trait.social + 4);
+      gameState.flags.memory_1s_autumn = "social_meet";
+      gameState.stage = "age1_winter";
+      await gameStorage.save(gameState);
+      runAge1Winter();
+    });
   });
-  addChoice("B｜父母陪喺隔離，介紹其他小朋友認識，鼓勵試下一起玩但不勉強", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.social = Math.min(100, gameState.trait.social + 3);
-    gameState.flags.memory_1s_autumn = "social_lead";
-    gameState.stage = "age1_winter";
-    await gameStorage.save(gameState);
-    runAge1Winter();
-  });
-  addChoice("C｜父母主動帶你同其他細路互動，幫你開啟交流，引導習慣面對陌生人", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.social = Math.min(100, gameState.trait.social + 4);
-    gameState.flags.memory_1s_autumn = "social_meet";
-    gameState.stage = "age1_winter";
-    await gameStorage.save(gameState);
-    runAge1Winter();
-  });
-  refreshTagDisplay();
 }
 
-// 1歲·冬
 function runAge1Winter(){
   gameState.stage = "age1_winter";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `1歲 · 幼兒時期（冬）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-寒風吹起，氣溫急降，屋企開咗暖氣，你著上厚身嘅冷衫同外套。
-呢個冬天，你開始識得簡單分類物件。會將圓形嘅波放入圓孔，方塊塞進方孔，嘗試按照形狀將物件擺返適合嘅位置。
-你開始識得揀擇，會明確表達鍾意邊樣食物、唔鍾意邊樣。見到唔鍾意嘅菜，會擰轉頭、閂埋個口唔肯食。
-有時你會試下自己食飯，用細羹扒飯，成日整到周圍都係飯粒，枱面、衫都污糟晒。父母要花好多時間清理。
-你情緒起伏好大，想做嘅事唔做到就會扭計大哭；願望達成，就即刻轉為笑面。呢個階段嘅你，情緒來得快，去得都快。`;
+寒風吹起，氣溫急降，屋企開咗暖氣。
+你開始識得簡單分類物件，會將圓形波放入圓孔。
+會試下自己食飯，用細羹扒飯，成日整到周圍都係飯粒。
+情緒起伏好大，想做嘅事唔做到就會扭計大哭，來得快去得也快。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母任由你自己嘗試用羹食飯、玩形狀配對，整到好污糟都唔會阻止", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.selfCare = Math.min(100, gameState.trait.selfCare + 2);
-    gameState.flags.memory_1s_winter = "self_try_free";
-    gameState.stage = "age2_spring";
-    gameState.age = 2;
-    await gameStorage.save(gameState);
-    runAge2Spring();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你嘗試自理、學習分類物件嘅回應：";
+    addChoice("A｜父母任由你自己嘗試用羹食飯、玩形狀配對，整到好污糟都唔會阻止", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.selfCare = Math.min(100, gameState.trait.selfCare + 2);
+      gameState.flags.memory_1s_winter = "self_try_free";
+      gameState.stage = "age2_spring";
+      gameState.age = 2;
+      await gameStorage.save(gameState);
+      runAge2Spring();
+    });
+    addChoice("B｜父母睇住你嘗試，適時幫手，教你點拎羹、對準形狀孔，鼓勵慢慢練習", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.selfCare = Math.min(100, gameState.trait.selfCare + 3);
+      gameState.flags.memory_1s_winter = "self_guide";
+      gameState.stage = "age2_spring";
+      gameState.age = 2;
+      await gameStorage.save(gameState);
+      runAge2Spring();
+    });
+    addChoice("C｜父母嘗試時從旁協助，減少弄亂，示範並講解，盡量減少挫折感", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.selfCare = Math.min(100, gameState.trait.selfCare + 4);
+      gameState.flags.memory_1s_winter = "self_assist";
+      gameState.stage = "age2_spring";
+      gameState.age = 2;
+      await gameStorage.save(gameState);
+      runAge2Spring();
+    });
   });
-  addChoice("B｜父母睇住你嘗試，適時幫手，教你點拎羹、對準形狀孔，鼓勵慢慢練習", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.selfCare = Math.min(100, gameState.trait.selfCare + 3);
-    gameState.flags.memory_1s_winter = "self_guide";
-    gameState.stage = "age2_spring";
-    gameState.age = 2;
-    await gameStorage.save(gameState);
-    runAge2Spring();
-  });
-  addChoice("C｜父母嘗試時從旁協助，減少弄亂，示範並講解，盡量減少挫折感", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.selfCare = Math.min(100, gameState.trait.selfCare + 4);
-    gameState.flags.memory_1s_winter = "self_assist";
-    gameState.stage = "age2_spring";
-    gameState.age = 2;
-    await gameStorage.save(gameState);
-    runAge2Spring();
-  });
-  refreshTagDisplay();
 }
 
-// 2歲·春
 function runAge2Spring(){
   gameState.stage = "age2_spring";
   gameState.age = 2;
   checkAgeNationalityChange();
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `2歲 · 幼兒時期（春）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
 冬日寒氣退散，春天返嚟，樹木長出新嘅嫩葉。
-踏入兩歲，你正式進入「恐怖二歲」嘅階段。口頭禪開始變成「唔好！」「唔要！」，凡事想自己話事，抗拒大人安排。
-你嘅語言能力大幅進步，可以講短短嘅完整句子，表達自己嘅諗法同願望，唔再只係兩三個字。
-記憶力變強，可以記住前幾日發生嘅小事。亦開始識得簡單想像遊戲，拎住香蕉當電話，擺喺耳邊假裝打電話。
-活動能力更強，跑跳都識，鍾意周圍奔來奔去，有時唔理父母呼喚，想自己去探索。
-自我意識非常強，會講「呢個係我㗎！」，對於屬於自己嘅嘢有強烈執念。`;
+踏入兩歲，你正式進入「恐怖二歲」，口頭禪變成「唔好！」「唔要！」。
+語言能力大幅進步，可以講短短完整句子表達想法。
+自我意識非常強，會講「呢個係我㗎！」。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母盡量畀你自主選擇，只要唔危險就唔干預，包容你嘅反叛", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.will = Math.min(100, gameState.trait.will + 3);
-    gameState.flags.memory_2s_spring = "will_freedom";
-    gameState.stage = "age2_summer";
-    await gameStorage.save(gameState);
-    runAge2Summer();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你反叛、自我主張嘅應對方式：";
+    addChoice("A｜父母盡量畀你自主選擇，只要唔危險就唔干預，包容你嘅反叛", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.will = Math.min(100, gameState.trait.will + 3);
+      gameState.flags.memory_2s_spring = "will_freedom";
+      gameState.stage = "age2_summer";
+      await gameStorage.save(gameState);
+      runAge2Summer();
+    });
+    addChoice("B｜父母設立清晰界線，危險事唔做，安全範圍內自己揀，同你講道理", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.will = Math.min(100, gameState.trait.will + 2);
+      gameState.flags.memory_2s_spring = "will_boundary";
+      gameState.stage = "age2_summer";
+      await gameStorage.save(gameState);
+      runAge2Summer();
+    });
+    addChoice("C｜父母安撫你嘅情緒，多順從你意願，減少衝突，避免你大發脾氣", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.will = Math.min(100, gameState.trait.will + 4);
+      gameState.flags.memory_2s_spring = "will_comply";
+      gameState.stage = "age2_summer";
+      await gameStorage.save(gameState);
+      runAge2Summer();
+    });
   });
-  addChoice("B｜父母設立清晰界線，危險事唔做，安全範圍內自己揀，同你講道理", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.will = Math.min(100, gameState.trait.will + 2);
-    gameState.flags.memory_2s_spring = "will_boundary";
-    gameState.stage = "age2_summer";
-    await gameStorage.save(gameState);
-    runAge2Summer();
-  });
-  addChoice("C｜父母安撫你嘅情緒，多順從你意願，減少衝突，避免你大發脾氣", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.will = Math.min(100, gameState.trait.will + 4);
-    gameState.flags.memory_2s_spring = "will_comply";
-    gameState.stage = "age2_summer";
-    await gameStorage.save(gameState);
-    runAge2Summer();
-  });
-  refreshTagDisplay();
 }
 
-// 2歲·夏
 function runAge2Summer(){
   gameState.stage = "age2_summer";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `2歲 · 幼兒時期（夏）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-炎炎夏日，陽光燦爛，有時父母會帶你去公園玩沙、踩水。
-你識得跑、原地跳，鍾意周圍追逐蝴蝶同小昆蟲，身體協調能力一日比一日好。
-想像遊戲變得更加豐富。你會幫公仔「餵飯」、幫佢「蓋被」，代入簡單角色，模擬日常生活。
-你開始識得分辨簡單顏色，例如紅、藍、黃。不過有時都會亂咁叫錯顏色，需要反覆練習。
-呢段時期你好容易妒忌。見到父母照顧其他細路，就會唔開心，會爭住要父母攬，想奪取全部注意力。
-有時發脾氣會大叫、趴喺地扭計，用激烈嘅情緒表達不滿。`;
+炎炎夏日，父母會帶你去公園玩沙、踩水。
+想像遊戲變得豐富，你會幫公仔「餵飯」、幫佢「蓋被」。
+呢段時期你好容易妒忌，見到父母照顧其他細路就會唔開心。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母陪你玩但不介入幻想劇情；你妒忌扭計唔刻意安撫，等冷靜", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.imagination = Math.min(100, gameState.trait.imagination + 3);
-    gameState.flags.memory_2s_summer = "imagine_free";
-    gameState.stage = "age2_autumn";
-    await gameStorage.save(gameState);
-    runAge2Autumn();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你想像遊戲同妒忌情緒嘅回應：";
+    addChoice("A｜父母陪你玩但不介入幻想劇情；你妒忌扭計唔刻意安撫，等冷靜", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.imagination = Math.min(100, gameState.trait.imagination + 3);
+      gameState.flags.memory_2s_summer = "imagine_free";
+      gameState.stage = "age2_autumn";
+      await gameStorage.save(gameState);
+      runAge2Autumn();
+    });
+    addChoice("B｜父母參與角色扮演，陪餵公仔；妒忌時短暫溫柔解釋，平衡注意力", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.imagination = Math.min(100, gameState.trait.imagination + 2);
+      gameState.flags.memory_2s_summer = "imagine_play";
+      gameState.stage = "age2_autumn";
+      await gameStorage.save(gameState);
+      runAge2Autumn();
+    });
+    addChoice("C｜父母主動構建幻想故事，引導玩不同角色；優先安撫妒忌，確保感受到被愛", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.imagination = Math.min(100, gameState.trait.imagination + 4);
+      gameState.flags.memory_2s_summer = "imagine_guide";
+      gameState.stage = "age2_autumn";
+      await gameStorage.save(gameState);
+      runAge2Autumn();
+    });
   });
-  addChoice("B｜父母參與角色扮演，陪餵公仔；妒忌時短暫溫柔解釋，平衡注意力", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.imagination = Math.min(100, gameState.trait.imagination + 2);
-    gameState.flags.memory_2s_summer = "imagine_play";
-    gameState.stage = "age2_autumn";
-    await gameStorage.save(gameState);
-    runAge2Autumn();
-  });
-  addChoice("C｜父母主動構建幻想故事，引導玩不同角色；優先安撫妒忌，確保感受到被愛", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.imagination = Math.min(100, gameState.trait.imagination + 4);
-    gameState.flags.memory_2s_summer = "imagine_guide";
-    gameState.stage = "age2_autumn";
-    await gameStorage.save(gameState);
-    runAge2Autumn();
-  });
-  refreshTagDisplay();
 }
 
-// 2歲·秋
 function runAge2Autumn(){
   gameState.stage = "age2_autumn";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `2歲 · 幼兒時期（秋）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-秋意漸濃，天氣涼爽，落街嘅時間變多。
-你嘅語言繼續進步，可以講更長嘅句子，會講返之前發生嘅事，簡單描述經歷。
-開始明白「多同少」「大同細」呢啲簡單對比概念，會比較兩樣物件嘅大小。
-你同其他小朋友相處時，仍然以平行遊戲為主，一齊喺同一個空間玩，但各自玩自己嘅玩具，甚少合作。有時會因為搶玩具而爭執、大喊。
-你開始學習如廁訓練，有時會識得話俾大人知想小便或者大便，但好多時都會唔記得，整濕褲。一旦失敗，會有少少挫敗感。`;
+秋意漸濃，天氣涼爽，落街時間變多。
+你同其他小朋友相處時，仍然以平行遊戲為主，各自玩自己嘅玩具。
+開始學習如廁訓練，有時會唔記得而整濕褲。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母唔急住推進如廁訓練隨自然；搶玩具時不即時介入，等你哋自行磨合", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.selfControl = Math.min(100, gameState.trait.selfControl + 2);
-    gameState.flags.memory_2s_autumn = "toilet_relax";
-    gameState.stage = "age2_winter";
-    await gameStorage.save(gameState);
-    runAge2Winter();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對如廁訓練、同同伴爭玩具嘅應對方式：";
+    addChoice("A｜父母唔急住推進如廁訓練隨自然；搶玩具時不即時介入，等你哋自行磨合", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.selfControl = Math.min(100, gameState.trait.selfControl + 2);
+      gameState.flags.memory_2s_autumn = "toilet_relax";
+      gameState.stage = "age2_winter";
+      await gameStorage.save(gameState);
+      runAge2Winter();
+    });
+    addChoice("B｜父母循序漸進教便壺，尿濕不責備；爭玩具時介入引導輪流同分享", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.selfControl = Math.min(100, gameState.trait.selfControl + 3);
+      gameState.flags.memory_2s_autumn = "toilet_teach";
+      gameState.stage = "age2_winter";
+      await gameStorage.save(gameState);
+      runAge2Winter();
+    });
+    addChoice("C｜父母積極幫忙練習如廁；發生爭執即刻安撫，幫你處理衝突", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.selfControl = Math.min(100, gameState.trait.selfControl + 4);
+      gameState.flags.memory_2s_autumn = "toilet_support";
+      gameState.stage = "age2_winter";
+      await gameStorage.save(gameState);
+      runAge2Winter();
+    });
   });
-  addChoice("B｜父母循序漸進教便壺，尿濕不責備；爭玩具時介入引導輪流同分享", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.selfControl = Math.min(100, gameState.trait.selfControl + 3);
-    gameState.flags.memory_2s_autumn = "toilet_teach";
-    gameState.stage = "age2_winter";
-    await gameStorage.save(gameState);
-    runAge2Winter();
-  });
-  addChoice("C｜父母積極幫忙練習如廁；發生爭執即刻安撫，幫你處理衝突", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.selfControl = Math.min(100, gameState.trait.selfControl + 4);
-    gameState.flags.memory_2s_autumn = "toilet_support";
-    gameState.stage = "age2_winter";
-    await gameStorage.save(gameState);
-    runAge2Winter();
-  });
-  refreshTagDisplay();
 }
 
-// 2歲·冬
 function runAge2Winter(){
   gameState.stage = "age2_winter";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `2歲 · 幼兒時期（冬）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-冬日凍冷，窗外天色容易早早變暗。屋企多咗好多室內活動，睇圖書、砌簡單積木。
-你可以砌幾塊積木起塔，不過塔好容易冧，冧咗有時會唔開心。
-你開始識得聽從簡單、一連串嘅指令，例如「拎個公仔過來，擺喺梳化度」。
-會主動表達喜惡，鍾意嘅故事書會不停叫父母重複讀，同一個故事聽十次都唔厭。
-呢個階段，你開始有同理心嘅萌芽。見到其他人喊，你會望住佢，甚至嘗試拎玩具俾對方，雖然唔係次次都明白對方嘅感受。`;
+冬日凍冷，屋企多咗好多室內活動，睇圖書、砌簡單積木。
+你可以砌幾塊積木起塔，冧咗有時會唔開心。
+同理心萌芽，見到其他人喊，會嘗試拎玩具俾對方。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母畀你自由玩積木不示範；讀故事簡單講不深入解釋，由你自由發揮", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.concentration = Math.min(100, gameState.trait.concentration + 3);
-    gameState.flags.memory_2s_winter = "focus_free";
-    gameState.stage = "age3_spring";
-    gameState.age = 3;
-    await gameStorage.save(gameState);
-    runAge3Spring();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你砌積木、聆聽故事嘅引導方式：";
+    addChoice("A｜父母畀你自由玩積木不示範；讀故事簡單講不深入解釋，由你自由發揮", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.concentration = Math.min(100, gameState.trait.concentration + 3);
+      gameState.flags.memory_2s_winter = "focus_free";
+      gameState.stage = "age3_spring";
+      gameState.age = 3;
+      await gameStorage.save(gameState);
+      runAge3Spring();
+    });
+    addChoice("B｜父母陪一齊砌積木，冧咗鼓勵重試；讀故事指住圖畫解釋畫面", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.concentration = Math.min(100, gameState.trait.concentration + 2);
+      gameState.flags.memory_2s_winter = "focus_guide";
+      gameState.stage = "age3_spring";
+      gameState.age = 3;
+      await gameStorage.save(gameState);
+      runAge3Spring();
+    });
+    addChoice("C｜父母安排固定閱讀時間細心講解；陪研究積木結構，教穩陣起塔技巧", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.concentration = Math.min(100, gameState.trait.concentration + 4);
+      gameState.flags.memory_2s_winter = "focus_read";
+      gameState.stage = "age3_spring";
+      gameState.age = 3;
+      await gameStorage.save(gameState);
+      runAge3Spring();
+    });
   });
-  addChoice("B｜父母陪一齊砌積木，冧咗鼓勵重試；讀故事指住圖畫解釋畫面", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.concentration = Math.min(100, gameState.trait.concentration + 2);
-    gameState.flags.memory_2s_winter = "focus_guide";
-    gameState.stage = "age3_spring";
-    gameState.age = 3;
-    await gameStorage.save(gameState);
-    runAge3Spring();
-  });
-  addChoice("C｜父母安排固定閱讀時間細心講解；陪研究積木結構，教穩陣起塔技巧", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.concentration = Math.min(100, gameState.trait.concentration + 4);
-    gameState.flags.memory_2s_winter = "focus_read";
-    gameState.stage = "age3_spring";
-    gameState.age = 3;
-    await gameStorage.save(gameState);
-    runAge3Spring();
-  });
-  refreshTagDisplay();
 }
 
-// 3歲·春
 function runAge3Spring(){
   gameState.stage = "age3_spring";
   gameState.age = 3;
   checkAgeNationalityChange();
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `3歲 · 幼兒時期（春）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-寒氣散盡，春暖花開，好多時候可以落公園長時間遊玩。
-踏入三歲，你嘅身體協調更加成熟，單腳企幾秒、踏三輪車都嘗試到。
-語言能力躍進，可以講完整長句子，會問好多好多問題，成日掛住講「點解？」。對身邊一切事物充滿無窮好奇心。
-想像力變得豐富，會創造屬於自己嘅虛構朋友，同佢一齊傾計、玩遊戲。
-開始真正懂得同其他小朋友合作遊戲，唔再只係各自玩自己嘢。識得輪流玩玩具，有時會簡單商量玩法。
-你嘅自我概念更加清晰，知道自己叫咩名、幾多歲，明白自己係獨立嘅個體。`;
+踏入三歲，身體協調更加成熟，會問好多好多問題，成日掛住講「點解？」。
+想像力豐富，會創造屬於自己嘅虛構朋友。
+自我概念清晰，知道自己叫咩名、幾多歲。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母鼓勵自己搵答案，問點解時引導觀察不直接話你知，多自己探索", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.inquire = Math.min(100, gameState.trait.inquire + 3);
-    gameState.flags.memory_3s_spring = "curious_explore";
-    gameState.stage = "age3_summer";
-    await gameStorage.save(gameState);
-    runAge3Summer();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你不斷提問、結識同伴嘅回應：";
+    addChoice("A｜父母鼓勵自己搵答案，問點解時引導觀察不直接話你知，多自己探索", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.inquire = Math.min(100, gameState.trait.inquire + 3);
+      gameState.flags.memory_3s_spring = "curious_explore";
+      gameState.stage = "age3_summer";
+      await gameStorage.save(gameState);
+      runAge3Summer();
+    });
+    addChoice("B｜父母簡單淺白解答每一個提問，陪同其他小朋友玩，適當調解衝突", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.inquire = Math.min(100, gameState.trait.inquire + 2);
+      gameState.flags.memory_3s_spring = "curious_answer";
+      gameState.stage = "age3_summer";
+      await gameStorage.save(gameState);
+      runAge3Summer();
+    });
+    addChoice("C｜父母詳細解釋提出嘅問題，拓展更多相關知識，幫忙學習合作技巧", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.inquire = Math.min(100, gameState.trait.inquire + 4);
+      gameState.flags.memory_3s_spring = "curious_deep";
+      gameState.stage = "age3_summer";
+      await gameStorage.save(gameState);
+      runAge3Summer();
+    });
   });
-  addChoice("B｜父母簡單淺白解答每一個提問，陪同其他小朋友玩，適當調解衝突", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.inquire = Math.min(100, gameState.trait.inquire + 2);
-    gameState.flags.memory_3s_spring = "curious_answer";
-    gameState.stage = "age3_summer";
-    await gameStorage.save(gameState);
-    runAge3Summer();
-  });
-  addChoice("C｜父母詳細解釋提出嘅問題，拓展更多相關知識，幫忙學習合作技巧", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.inquire = Math.min(100, gameState.trait.inquire + 4);
-    gameState.flags.memory_3s_spring = "curious_deep";
-    gameState.stage = "age3_summer";
-    await gameStorage.save(gameState);
-    runAge3Summer();
-  });
-  refreshTagDisplay();
 }
 
-// 3歲·夏
 function runAge3Summer(){
   gameState.stage = "age3_summer";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `3歲 · 幼兒時期（夏）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-夏日炎熱，陽光普照，有機會去沙灘或者泳池淺灘玩下水。
-你可以雙腳跳離地面，鍾意跑、爬、搖擺身體，大肌肉動作愈來愈靈活。
-小肌肉亦有進步，可以拎住蠟筆亂畫圓圈同線條，嘗試模仿畫簡單圖案，會自己執起細小物件。
-開始認得一啲簡單數字同簡單漢字，明白數1、2、3代表數量。
-你開始識得分辨情緒，知道開心、唔開心、嬲呢啲感受，會講出自己而家嘅心情。
-有時會講大話，唔係存心欺騙，只係想像同現實分唔清楚，將幻想當成真實。`;
+夏日炎熱，有機會去沙灘玩水。
+小肌肉進步，拎蠟筆亂畫圓圈線條。
+識得分辨情緒，但有時會將幻想當成真實講大話。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母畀你自由畫畫不要求像；講幻想故事時不糾正，任由想像發揮", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.creativity = Math.min(100, gameState.trait.creativity + 3);
-    gameState.flags.memory_3s_summer = "create_free";
-    gameState.stage = "age3_autumn";
-    await gameStorage.save(gameState);
-    runAge3Autumn();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你繪畫、認知學習同幻想式說謊嘅回應：";
+    addChoice("A｜父母畀你自由畫畫不要求像；講幻想故事時不糾正，任由想像發揮", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.creativity = Math.min(100, gameState.trait.creativity + 3);
+      gameState.flags.memory_3s_summer = "create_free";
+      gameState.stage = "age3_autumn";
+      await gameStorage.save(gameState);
+      runAge3Autumn();
+    });
+    addChoice("B｜父母一齊畫畫示範簡單線條；溫柔分開幻想同現實，講真實發生嘅事", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.creativity = Math.min(100, gameState.trait.creativity + 2);
+      gameState.flags.memory_3s_summer = "create_guide";
+      gameState.stage = "age3_autumn";
+      await gameStorage.save(gameState);
+      runAge3Autumn();
+    });
+    addChoice("C｜父母教畫圖、認數字文字；幻想內容時細心引導分辨現實與想像", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.creativity = Math.min(100, gameState.trait.creativity + 4);
+      gameState.flags.memory_3s_summer = "create_teach";
+      gameState.stage = "age3_autumn";
+      await gameStorage.save(gameState);
+      runAge3Autumn();
+    });
   });
-  addChoice("B｜父母一齊畫畫示範簡單線條；溫柔分開幻想同現實，講真實發生嘅事", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.creativity = Math.min(100, gameState.trait.creativity + 2);
-    gameState.flags.memory_3s_summer = "create_guide";
-    gameState.stage = "age3_autumn";
-    await gameStorage.save(gameState);
-    runAge3Autumn();
-  });
-  addChoice("C｜父母教畫圖、認數字文字；幻想內容時細心引導分辨現實與想像", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.creativity = Math.min(100, gameState.trait.creativity + 4);
-    gameState.flags.memory_3s_summer = "create_teach";
-    gameState.stage = "age3_autumn";
-    await gameStorage.save(gameState);
-    runAge3Autumn();
-  });
-  refreshTagDisplay();
 }
 
-// 3歲·秋
 function runAge3Autumn(){
   gameState.stage = "age3_autumn";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `3歲 · 幼兒時期（秋）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-秋高氣爽，樹葉飄落，係適合外出郊遊嘅季節。
-你嘅記憶容量提升，可以記住一連串嘅簡單規則，玩簡單桌遊、捉迷藏。
-開始明白物件分類，可以按顏色、種類將玩具分開擺放。
-你開始識得輪流、等待，唔係所有嘢都要即刻得到。不過耐性仍然有限，等太耐都會不耐煩。
-呢個年紀，你會鍾意同人比較，見到其他小朋友有新玩具，就會轉頭同父母話自己都想要。
-你會開始顧及其他人感受，有時會主動安慰唔開心嘅人，同理心進一步成長。`;
+秋高氣爽，記憶容量提升，可以記住一連串簡單規則。
+開始明白輪流、等待。
+你會開始顧及其他人感受，主動安慰唔開心嘅人。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母唔刻意訓練耐性，想要嘅嘢多數盡量滿足，唔要長時間等待", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.patience = Math.min(100, gameState.trait.patience + 2);
-    gameState.flags.memory_3s_autumn = "patience_loose";
-    gameState.stage = "age3_winter";
-    await gameStorage.save(gameState);
-    runAge3Winter();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你等待耐性、想要新玩具嘅應對方式：";
+    addChoice("A｜父母唔刻意訓練耐性，想要嘅嘢多數盡量滿足，唔要長時間等待", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.patience = Math.min(100, gameState.trait.patience + 2);
+      gameState.flags.memory_3s_autumn = "patience_loose";
+      gameState.stage = "age3_winter";
+      await gameStorage.save(gameState);
+      runAge3Winter();
+    });
+    addChoice("B｜父母教學習等待，解釋唔係所有嘢都可以即刻有；適當滿足不有求必應", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.patience = Math.min(100, gameState.trait.patience + 3);
+      gameState.flags.memory_3s_autumn = "patience_train";
+      gameState.stage = "age3_winter";
+      await gameStorage.save(gameState);
+      runAge3Winter();
+    });
+    addChoice("C｜父母透過遊戲刻意練習耐性，做到等待就俾獎勵，教識克制慾望", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.patience = Math.min(100, gameState.trait.patience + 4);
+      gameState.flags.memory_3s_autumn = "patience_reward";
+      gameState.stage = "age3_winter";
+      await gameStorage.save(gameState);
+      runAge3Winter();
+    });
   });
-  addChoice("B｜父母教學習等待，解釋唔係所有嘢都可以即刻有；適當滿足不有求必應", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.patience = Math.min(100, gameState.trait.patience + 3);
-    gameState.flags.memory_3s_autumn = "patience_train";
-    gameState.stage = "age3_winter";
-    await gameStorage.save(gameState);
-    runAge3Winter();
-  });
-  addChoice("C｜父母透過遊戲刻意練習耐性，做到等待就俾獎勵，教識克制慾望", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.patience = Math.min(100, gameState.trait.patience + 4);
-    gameState.flags.memory_3s_autumn = "patience_reward";
-    gameState.stage = "age3_winter";
-    await gameStorage.save(gameState);
-    runAge3Winter();
-  });
-  refreshTagDisplay();
 }
 
-// 3歲·冬
 function runAge3Winter(){
   gameState.stage = "age3_winter";
-  clearChoices();
   const wealthDesc = getWealthDesc();
   const storyText = `3歲 · 幼兒時期（冬）
 國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
 ${wealthDesc}
 
-冬天來臨，晝短夜長，屋企多留喺室內活動。
-三歲嘅你，已經有足夠能力自己做一啲簡單自理：自己除衫、着鞋、自己食完一餐飯，有時仲會主動幫手做簡單家務，例如執玩具。
-你嘅道德觀只係基礎階段，覺得「被人鬧嘅行為就係錯」，判斷好壞主要睇會唔會受懲罰。
-你好鍾意同屋企人傾計，可以詳細講返一日入面發生嘅大小事。
-呢段時期好多小朋友會準備入學前班，父母會開始同你講關於學校、老師、同班小朋友嘅事。你會對學校有幻想，有期待，亦可能有少少緊張同不安。
-呢個冬天，標誌住你幼兒早期階段嘅完結，你即將踏入學前階段，準備迎接新嘅環境同挑戰。`;
+冬天來臨，三歲嘅你已經有足夠能力自己做簡單自理：除衫、着鞋、食完一餐飯。
+準備入學前班，對學校有期待，亦可能有少少緊張不安。
+呢個冬天標誌住你幼兒早期階段嘅完結。`;
 
-  renderStory(storyText);
-  addChoice("A｜父母盡量放手畀你自理；學前班簡單一提不做過多鋪排，等你自然適應", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
-    gameState.trait.independence = Math.min(100, gameState.trait.independence + 3);
-    gameState.flags.memory_3s_winter = "prep_free";
-    gameState.stage = "childhoodEvent";
-    gameState.age = 6;
-    gameState.eventIndex = 0;
-    await gameStorage.save(gameState);
-    runNextChildhoodEvent();
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你自理練習、準備入學嘅引導方式：";
+    addChoice("A｜父母盡量放手畀你自理；學前班簡單一提不做過多鋪排，等你自然適應", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 2);
+      gameState.trait.independence = Math.min(100, gameState.trait.independence + 3);
+      gameState.flags.memory_3s_winter = "prep_free";
+      gameState.stage = "childhoodEvent";
+      gameState.age = 6;
+      gameState.eventIndex = 0;
+      await gameStorage.save(gameState);
+      runNextChildhoodEvent();
+    });
+    addChoice("B｜父母鼓勵自理遇困難幫手；慢慢講學校日常解答疑問，減低不安", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
+      gameState.trait.independence = Math.min(100, gameState.trait.independence + 2);
+      gameState.flags.memory_3s_winter = "prep_balance";
+      gameState.stage = "childhoodEvent";
+      gameState.age = 6;
+      gameState.eventIndex = 0;
+      await gameStorage.save(gameState);
+      runNextChildhoodEvent();
+    });
+    addChoice("C｜父母密集訓練自理，提前模擬校園生活，細心安撫對陌生環境嘅恐懼", async ()=>{
+      gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
+      gameState.trait.independence = Math.min(100, gameState.trait.independence + 4);
+      gameState.flags.memory_3s_winter = "prep_support";
+      gameState.stage = "childhoodEvent";
+      gameState.age = 6;
+      gameState.eventIndex = 0;
+      await gameStorage.save(gameState);
+      runNextChildhoodEvent();
+    });
   });
-  addChoice("B｜父母鼓勵自理遇困難幫手；慢慢講學校日常解答疑問，減低不安", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 3);
-    gameState.trait.independence = Math.min(100, gameState.trait.independence + 2);
-    gameState.flags.memory_3s_winter = "prep_balance";
-    gameState.stage = "childhoodEvent";
-    gameState.age = 6;
-    gameState.eventIndex = 0;
-    await gameStorage.save(gameState);
-    runNextChildhoodEvent();
-  });
-  addChoice("C｜父母密集訓練自理，提前模擬校園生活，細心安撫對陌生環境嘅恐懼", async ()=>{
-    gameState.trait.perception = Math.min(100, gameState.trait.perception + 1);
-    gameState.trait.independence = Math.min(100, gameState.trait.independence + 4);
-    gameState.flags.memory_3s_winter = "prep_support";
-    gameState.stage = "childhoodEvent";
-    gameState.age = 6;
-    gameState.eventIndex = 0;
-    await gameStorage.save(gameState);
-    runNextChildhoodEvent();
-  });
-  refreshTagDisplay();
 }
 
-// 童年微型事件
 function runNextChildhoodEvent(){
+  clearTimeouts();
   clearChoices();
   gameState.stage = "childhoodEvent";
   let idx = gameState.eventIndex;
@@ -1453,40 +1266,44 @@ function runNextChildhoodEvent(){
     return;
   }
   let evt = childhoodEvents[idx];
-  renderStory(evt.text);
-  evt.choices.forEach(ch=>{
-    addChoice(ch.text, async ()=>{
-      for(let key in ch.delta){
-        if(gameState.trait[key] !== undefined){
-          gameState.trait[key] = Math.max(0, Math.min(100, gameState.trait[key] + ch.delta[key]));
+  
+  // 童年事件也套用逐句顯現（或者直接顯示）
+  playSequentialStory(evt.text, ()=>{
+    clearChoices();
+    evt.choices.forEach(ch=>{
+      addChoice(ch.text, async ()=>{
+        for(let key in ch.delta){
+          if(gameState.trait[key] !== undefined){
+            gameState.trait[key] = Math.max(0, Math.min(100, gameState.trait[key] + ch.delta[key]));
+          }
         }
-      }
-      gameState.eventIndex++;
-      await gameStorage.save(gameState);
-      runNextChildhoodEvent();
+        gameState.eventIndex++;
+        await gameStorage.save(gameState);
+        runNextChildhoodEvent();
+      });
     });
-  });
-  refreshTagDisplay();
+  }, false);
 }
 
-// 15歲，最終三大顯性選擇
 function showAge15FinalChoices(){
+  clearTimeouts();
   gameState.stage = "age15Choice";
   clearChoices();
-  renderStory("你已經15歲。\n回望成長歲月，你需要選擇接下來主要投入嘅方向：");
-  finalAge15Choices.forEach(opt=>{
-    addChoice(opt.text, async ()=>{
-      opt.effect();
-      await gameStorage.save(gameState);
-      renderStory("你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。\n【這裡之後可以寫跳轉到Stage2劇本】");
-      clearChoices();
-      refreshTagDisplay();
+  playSequentialStory("你已經15歲。\n回望成長歲月，你需要選擇接下來主要投入嘅方向：", ()=>{
+    clearChoices();
+    finalAge15Choices.forEach(opt=>{
+      addChoice(opt.text, async ()=>{
+        opt.effect();
+        await gameStorage.save(gameState);
+        playSequentialStory("你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。", ()=>{
+          clearChoices();
+        }, false);
+        refreshTagDisplay();
+      });
     });
-  });
-  refreshTagDisplay();
+  }, false);
 }
 
-// 載入存檔
 async function loadGame(){
   try{
     let saved = await gameStorage.load();
@@ -1500,13 +1317,11 @@ async function loadGame(){
       }
     }
   }catch(e){
-    console.log("存檔損壞，重置遊戲", e);
     localStorage.removeItem("lifeGameSave");
   }
 
   checkAgeNationalityChange();
   
-  // 根據當前階段分發路由
   switch(gameState.stage){
     case "start": showStartScreen(); break;
     case "age0_spring": runAge0Spring(); break;
@@ -1532,12 +1347,9 @@ async function loadGame(){
   refreshTagDisplay();
 }
 
-// 管理員選單與快捷跳轉
 function openJumpMenu(){
   let menuText = "請選擇要跳轉嘅劇情分支：\n";
-  jumpList.forEach((item,i)=>{
-    menuText += `${i+1}. ${item.name}\n`;
-  });
+  jumpList.forEach((item,i)=>{ menuText += `${i+1}. ${item.name}\n`; });
   let input = prompt(menuText + "\n輸入數字：");
   let num = parseInt(input);
   if(!isNaN(num) && num >= 1 && num <= jumpList.length){
@@ -1555,7 +1367,6 @@ function exitAdminMode(){
   $("#adminOverlay").style.display = "none";
 }
 
-// 密碼手勢觸發（上2下3）
 const TAP_TIMEOUT = 2500;
 let tapPhase = 0;
 let tapCount = 0;
@@ -1579,21 +1390,15 @@ document.addEventListener("click", (e)=>{
   if(tapPhase === 0){
     if(isUpper){
       tapCount++;
-      if(tapCount >= 2){
-        tapPhase = 1;
-        tapCount = 0;
-      }
+      if(tapCount >= 2){ tapPhase = 1; tapCount = 0; }
     }
   }else if(tapPhase === 1){
     if(!isUpper){
       tapCount++;
       if(tapCount >= 3){
         const pwd = prompt("請輸入管理員密碼");
-        if(pwd === "calvin"){
-          enterAdminMode();
-        }
-        tapPhase = 0;
-        tapCount = 0;
+        if(pwd === "calvin"){ enterAdminMode(); }
+        tapPhase = 0; tapCount = 0;
       }
     }
   }
@@ -1618,7 +1423,6 @@ function jumpToAge3Winter(){ gameState.stage="age3_winter"; gameState.age=3; gam
 function jumpToChildhood(){ gameState.stage="childhoodEvent"; gameState.eventIndex=0; gameState.age=6; gameState.birthLocked=true; checkAgeNationalityChange(); runNextChildhoodEvent(); }
 function jumpToAge15(){ gameState.stage="age15Choice"; showAge15FinalChoices(); }
 
-// 載入遊戲
 loadGame();
 </script>
 </body>
