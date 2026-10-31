@@ -15,90 +15,187 @@ body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-
 
 /* ===== 管理員浮動UI（管理員模式先顯示） ===== */
 #adminOverlay{
-  display:none;
-  position:fixed;
-  top:10px;
-  right:10px;
-  z-index:999;
-  background:#1a1a1a;
-  border:1px solid #ffc107;
-  padding:12px;
-  border-radius:10px;
-  max-width:280px;
+display:none;
+position:fixed;
+top:10px;
+right:10px;
+z-index:999;
+background:#1a1a1a;
+border:1px solid #ffc107;
+padding:12px;
+border-radius:10px;
+max-width:280px;
 }
 #adminOverlay h4{margin:0 0 8px;color:#ffc107;font-size:15px}
 .admin-over-btn{
-  display:block;
-  width:100%;
-  padding:6px 8px;
-  margin:4px 0;
-  background:#3a3a22;
-  color:#ffe;
-  border:1px solid #777;
-  border-radius:6px;
-  cursor:pointer;
+display:block;
+width:100%;
+padding:6px 8px;
+margin:4px 0;
+background:#3a3a22;
+color:#ffe;
+border:1px solid #777;
+border-radius:6px;
+cursor:pointer;
 }
 #tagInfo{
-  margin-top:8px;
-  font-size:12px;
-  color:#bbb;
-  white-space:pre-wrap;
+margin-top:8px;
+font-size:12px;
+color:#bbb;
+white-space:pre-wrap;
 }
 </style>
 </head>
 <body>
 <div id="container">
-  <div id="story"></div>
-  <div id="choices"></div>
-  <div id="log"></div>
+<div id="story"></div>
+<div id="choices"></div>
+<div id="log"></div>
 </div>
 
 <!-- 管理員浮動面板，會一直跟住畫面 -->
 <div id="adminOverlay">
-  <h4>🔧 管理員模式</h4>
-  <button class="admin-over-btn" onclick="openJumpMenu()">劇情分支跳轉選單</button>
-  <button class="admin-over-btn" onclick="exitAdminMode()">退出管理員模式</button>
-  <div id="tagInfo"></div>
+<h4>🔧 管理員模式</h4>
+<button class="admin-over-btn" onclick="openJumpMenu()">劇情分支跳轉選單</button>
+<button class="admin-over-btn" onclick="exitAdminMode()">退出管理員模式</button>
+<div id="tagInfo"></div>
 </div>
 
 <script>
 // ========== 遊戲狀態【預設安全狀態】 ==========
 let gameState = {
-  birth:{
-    gender:"male",
-    orientation:"pan",
-    familyWealth:"middle",
-    birthCountry:"文萊"
-  },
-  trait:{
-    outgoing:50,
-    pragmatic:50,
-    empathy:50,
-    introvert:50
-  },
-  stats:{
-    studyLevel:"medium",
-    finance:"low"
-  },
-  stage:"start",
-  eventIndex:0,
-  birthLocked: false
+birth:{
+gender:"male",
+orientation:"pan",
+familyWealth:"middle",
+birthCountry:"文萊"
+},
+trait:{
+outgoing:50,
+pragmatic:50,
+empathy:50,
+introvert:50
+},
+stats:{
+studyLevel:"medium",
+finance:"low"
+},
+stage:"start",
+eventIndex:0,
+birthLocked: false
 };
 // 管理員模式開關（頁面刷新就重置）
 let isAdminMode = false;
 
+// =====================【重點：儲存抽象層｜為Firebase後端預留接口】=====================
+// 切換模式： prototype = 原型本地模式； firebase = 後端雲端模式（日後啟用）
+const STORAGE_MODE = "prototype"; 
+
+const gameStorage = {
+  // 儲存遊戲存檔
+  async save(saveData) {
+    if(STORAGE_MODE === "prototype"){
+      try{
+        localStorage.setItem("lifeGameSave", JSON.stringify(saveData));
+        return true;
+      }catch(e){
+        console.error("本地存檔失敗", e);
+        return false;
+      }
+    }else if(STORAGE_MODE === "firebase"){
+      // ========= 日後接Firebase時，只需要改寫呢段，其餘遊戲完全唔使動 =========
+      // return await firebaseSaveGame(uid, saveData);
+    }
+  },
+  // 載入遊戲存檔
+  async load() {
+    if(STORAGE_MODE === "prototype"){
+      try{
+        const raw = localStorage.getItem("lifeGameSave");
+        if(raw) return JSON.parse(raw);
+        return null;
+      }catch(e){
+        console.error("載入存檔失敗",e);
+        return null;
+      }
+    }else if(STORAGE_MODE === "firebase"){
+      // return await firebaseLoadGame(uid);
+    }
+  },
+  // 讀取用戶DLC權限 & 免費試玩記錄
+  async getUserPermission() {
+    if(STORAGE_MODE === "prototype"){
+      // 原型用localStorage模擬權限
+      let perm = JSON.parse(localStorage.getItem("lifeGamePermission") || '{"freeTrialUsed":false,"freeTrialStage":"","ownedDLC":[]}');
+      return perm;
+    }else if(STORAGE_MODE === "firebase"){
+      // return await firebaseGetUserPermission(uid);
+    }
+  },
+  // 寫入權限記錄（購買DLC / 使用免費試玩）
+  async setUserPermission(permissionObj) {
+    if(STORAGE_MODE === "prototype"){
+      localStorage.setItem("lifeGamePermission", JSON.stringify(permissionObj));
+      return true;
+    }else if(STORAGE_MODE === "firebase"){
+      // return await firebaseSetUserPermission(uid, permissionObj);
+    }
+  }
+}
+
+// =====================【DLC權限檢查函數｜獨立抽離！日後接Firebase只改呢個函數】=====================
+/**
+ * 檢查玩家是否可以解鎖指定階段
+ * @param {string} stageKey 階段代號：childhood / teen / youth / middle / elder
+ * @returns {Promise<boolean>} 是否解鎖
+ */
+async function checkStageUnlock(stageKey){
+  const perm = await gameStorage.getUserPermission();
+  // 童年永久免費
+  if(stageKey === "childhood") return true;
+
+  // 如果玩家未用免費試玩，可以解鎖佢揀嗰個免費階段
+  if(!perm.freeTrialUsed && perm.freeTrialStage === stageKey){
+    return true;
+  }
+  // 檢查是否購買咗呢個DLC
+  if(perm.ownedDLC.includes(stageKey)){
+    return true;
+  }
+  return false;
+}
+
+// 標記玩家已使用免費試玩名額
+async function claimFreeTrial(stageKey){
+  const perm = await gameStorage.getUserPermission();
+  if(perm.freeTrialUsed) return false;
+  perm.freeTrialUsed = true;
+  perm.freeTrialStage = stageKey;
+  await gameStorage.setUserPermission(perm);
+  return true;
+}
+
+// 模擬購買DLC（原型用，正式版由Firebase後台/收款Webhook修改）
+async function addOwnedDLC(dlcKey){
+  const perm = await gameStorage.getUserPermission();
+  if(!perm.ownedDLC.includes(dlcKey)){
+    perm.ownedDLC.push(dlcKey);
+  }
+  await gameStorage.setUserPermission(perm);
+}
+
 // 翻譯字典
 const trans = {
-  gender: {male:"男", female:"女"},
-  orientation: {hetero:"異性戀", homo:"同性戀", bi:"雙性戀", pan:"泛性戀", asexual:"無性戀"},
-  familyWealth: {poor:"貧窮", middle:"中等", rich:"富裕"},
-  studyLevel: {low:"低", medium:"中等", high:"高"},
-  finance: {low:"低", medium:"中等", high:"高"},
-  stage: {
-    start:"開局｜抽先天屬性",
-    childhoodEvent:"童年事件階段",
-    age15Choice:"15歲抉擇階段"
-  }
+gender: {male:"男", female:"女"},
+orientation: {hetero:"異性戀", homo:"同性戀", bi:"雙性戀", pan:"泛性戀", asexual:"無性戀"},
+familyWealth: {poor:"貧窮", middle:"中等", rich:"富裕"},
+studyLevel: {low:"低", medium:"中等", high:"高"},
+finance: {low:"低", medium:"中等", high:"高"},
+stage: {
+start:"開局｜抽先天屬性",
+childhoodEvent:"童年事件階段",
+age15Choice:"15歲抉擇階段"
+}
 };
 
 // 亞洲國家列表
@@ -117,67 +214,71 @@ const wealthList = ["poor","middle","rich"];
 
 // 童年微型事件庫
 const childhoodEvents = [
-  {
-    text:"小學時，班裡組織課外活動，同學邀請你一齊參加。",
-    choices:[
-      {text:"參加活動，同大家一齊玩", delta:{outgoing:+8, introvert:-4}},
-      {text:"婉拒邀請，獨自留低看書", delta:{introvert:+8, outgoing:-4}}
-    ]
-  },
-  {
-    text:"屋企遇到小困難，父母商量事情，你在旁聽。",
-    choices:[
-      {text:"嘗試體諒父母，主動詢問是否需要幫忙", delta:{empathy:+7}},
-      {text:"唔想介入，返自己房間", delta:{empathy:-3, introvert:+5}}
-    ]
-  },
-  {
-    text:"考試成績不理想，你心裡開始思考自己嘅時間應該點樣分配。",
-    choices:[
-      {text:"決定調整時間，專心溫習", delta:{pragmatic:+6}},
-      {text:"覺得分數唔係一切，繼續做自己鍾意嘅事", delta:{pragmatic:-4}}
-    ]
-  }
+{
+text:"小學時，班裡組織課外活動，同學邀請你一齊參加。",
+choices:[
+{text:"參加活動，同大家一齊玩", delta:{outgoing:+8, introvert:-4}},
+{text:"婉拒邀請，獨自留低看書", delta:{introvert:+8, outgoing:-4}}
+ ]
+},
+{
+text:"屋企遇到小困難，父母商量事情，你在旁聽。",
+choices:[
+{text:"嘗試體諒父母，主動詢問是否需要幫忙", delta:{empathy:+7}},
+{text:"唔想介入，返自己房間", delta:{empathy:-3, introvert:+5}}
+ ]
+},
+{
+text:"考試成績不理想，你心裡開始思考自己嘅時間應該點樣分配。",
+choices:[
+{text:"決定調整時間，專心溫習", delta:{pragmatic:+6}},
+{text:"覺得分數唔係一切，繼續做自己鍾意嘅事", delta:{pragmatic:-4}}
+ ]
+}
 ];
 
 // 15歲最終3個大選項
 const finalAge15Choices = [
-  {
-    text:"專心讀書，希望爭取好成績",
-    effect:()=>{
-      gameState.stats.studyLevel = "high";
-      gameState.stats.finance = "low";
-    }
-  },
-  {
-    text:"投入自己嘅興趣愛好，發展專長",
-    effect:()=>{
-      gameState.stats.studyLevel = "medium";
-      gameState.stats.finance = "low";
-    }
-  },
-  {
-    text:"希望出社會工作，早點賺錢",
-    effect:()=>{
-      gameState.stats.studyLevel = "low";
-      gameState.stats.finance = "medium";
-    }
-  }
+{
+text:"專心讀書，希望爭取好成績",
+effect:()=>{
+gameState.stats.studyLevel = "high";
+gameState.stats.finance = "low";
+}
+},
+{
+text:"投入自己嘅興趣愛好，發展專長",
+effect:()=>{
+gameState.stats.studyLevel = "medium";
+gameState.stats.finance = "low";
+}
+},
+{
+text:"希望出社會工作，早點賺錢",
+effect:()=>{
+gameState.stats.studyLevel = "low";
+gameState.stats.finance = "medium";
+}
+}
 ];
 
 // 【劇情分支跳轉清單】之後新增章節直接加入呢度
 const jumpList = [
-  {name:"開局｜抽先天屬性", fn:()=>showStartScreen()},
-  {name:"童年事件起點", fn:()=>jumpToChildhood()},
-  {name:"15歲選擇畫面", fn:()=>jumpToAge15()}
+{name:"開局｜抽先天屬性", fn:()=>showStartScreen()},
+{name:"童年事件起點", fn:()=>jumpToChildhood()},
+{name:"15歲選擇畫面", fn:()=>jumpToAge15()}
 ];
 
-// UI渲染函數
+// UI輔助
 const $ = s=>document.querySelector(s);
 const $$ = s=>document.querySelectorAll(s);
 
-function renderStory(txt){$("#story").innerText = txt;}
-function clearChoices(){$("#choices").innerHTML="";}
+function renderStory(txt){
+  $("#story").innerText = txt;
+}
+function clearChoices(){
+  $("#choices").innerHTML="";
+}
 function addChoice(text, callback){
   let btn = document.createElement("button");
   btn.className="choice-btn";
@@ -185,12 +286,14 @@ function addChoice(text, callback){
   btn.onclick=callback;
   $("#choices").appendChild(btn);
 }
-function showLog(txt){$("#log").innerText = txt;}
+function showLog(txt){
+  $("#log").innerText = txt;
+}
 
 // 更新隱藏標籤【全中文版本】
 function refreshTagDisplay(){
-  const g = gameState;
-  const txt = `【隱藏標籤】
+const g = gameState;
+const txt = `【隱藏標籤】
 性別：${trans.gender[g.birth.gender]}
 性取向：${trans.orientation[g.birth.orientation]}
 家庭經濟：${trans.familyWealth[g.birth.familyWealth]}
@@ -204,154 +307,141 @@ function refreshTagDisplay(){
 
 狀態
 學業水平：${trans.studyLevel[g.stats.studyLevel]}
-財務狀況：${trans.finance[g.stats.finance]}
-當前階段：${trans.stage[g.stage]}
-已完成事件數：${g.eventIndex}
-出生屬性已鎖定：${g.birthLocked ? "是" : "否"}`;
-  $("#tagInfo").innerText = txt;
+財務：${trans.finance[g.stats.finance]}
+當前階段索引：${g.eventIndex}
+出生屬性已鎖定：${g.birthLocked}`;
+$("#tagInfo").innerText = txt;
 }
 
 // 隨機抽取先天屬性
 function rollBirthAttributes(){
-  gameState.birth.gender = genderList[Math.floor(Math.random()*genderList.length)];
-  gameState.birth.orientation = orientationList[Math.floor(Math.random()*orientationList.length)];
-  gameState.birth.familyWealth = wealthList[Math.floor(Math.random()*wealthList.length)];
-  gameState.birth.birthCountry = countryList[Math.floor(Math.random()*countryList.length)];
+gameState.birth.gender = genderList[Math.floor(Math.random()*genderList.length)];
+gameState.birth.orientation = orientationList[Math.floor(Math.random()*orientationList.length)];
+gameState.birth.familyWealth = wealthList[Math.floor(Math.random()*wealthList.length)];
+gameState.birth.birthCountry = countryList[Math.floor(Math.random()*countryList.length)];
 }
 
 // 開局畫面
 function showStartScreen(){
-  clearChoices();
-  gameState.stage = "start";
-  gameState.birthLocked = false;
-  rollBirthAttributes();
-  renderStory("新的人生即將開始。\n你的出身條件已經隨機生成。\n你可以重新抽一次先天設定，或者直接開始成長旅程。");
-  addChoice("開始新一局", ()=>{
-    gameState.birthLocked = true;
-    gameState.eventIndex = 0;
-    gameState.stage = "childhoodEvent";
-    renderStory("你的人生開始。\n從0歲到15歲，你在成長之中，經歷一連串日常小事，慢慢塑造你的性格。");
-    runNextChildhoodEvent();
-  });
-  addChoice("重新抽取先天屬性", ()=>{
-    rollBirthAttributes();
-    renderStory("已重新隨機抽取出身設定。\n你可以再次重抽，或者直接開始。");
-  });
-  refreshTagDisplay();
+clearChoices();
+gameState.stage = "start";
+gameState.birthLocked = false;
+rollBirthAttributes();
+renderStory("新的人生即將開始。\n你的出身條件已經隨機生成。\n你可以重新抽一次先天設定，或者直接開始成長旅程。");
+addChoice("開始新一局", async ()=>{
+gameState.birthLocked = true;
+gameState.eventIndex = 0;
+gameState.stage = "childhoodEvent";
+renderStory("你的人生開始。\n從0歲到15歲，你在成長之中，經歷一連串日常小事，慢慢塑造你的性格。");
+await gameStorage.save(gameState);
+runNextChildhoodEvent();
+});
+addChoice("重新抽取先天屬性", ()=>{
+rollBirthAttributes();
+renderStory("已重新隨機抽取出身設定。\n你可以再次重抽，或者直接開始。");
+refreshTagDisplay();
+});
+refreshTagDisplay();
 }
 
 // 執行童年微型事件
 function runNextChildhoodEvent(){
-  clearChoices();
-  let idx = gameState.eventIndex;
-  if(idx >= childhoodEvents.length){
-    showAge15FinalChoices();
-    return;
-  }
-  let evt = childhoodEvents[idx];
-  renderStory(evt.text);
-  evt.choices.forEach(ch=>{
-    addChoice(ch.text, ()=>{
-      for(let key in ch.delta){
-        gameState.trait[key] = Math.max(0, Math.min(100, gameState.trait[key] + ch.delta[key]));
-      }
-      gameState.eventIndex++;
-      runNextChildhoodEvent();
-    })
-  })
-  refreshTagDisplay();
+clearChoices();
+let idx = gameState.eventIndex;
+if(idx >= childhoodEvents.length){
+showAge15FinalChoices();
+return;
+}
+let evt = childhoodEvents[idx];
+renderStory(evt.text);
+evt.choices.forEach(ch=>{
+addChoice(ch.text, async ()=>{
+for(let key in ch.delta){
+gameState.trait[key] = Math.max(0, Math.min(100, gameState.trait[key] + ch.delta[key]));
+}
+gameState.eventIndex++;
+await gameStorage.save(gameState);
+runNextChildhoodEvent();
+})
+})
+refreshTagDisplay();
 }
 
 // 15歲，最終三大顯性選擇
 function showAge15FinalChoices(){
-  gameState.stage = "age15Choice";
-  clearChoices();
-  renderStory("你已經15歲。\n回望成長歲月，你需要選擇接下來主要投入嘅方向：");
-  finalAge15Choices.forEach(opt=>{
-    addChoice(opt.text, ()=>{
-      opt.effect();
-      saveGame();
-      renderStory("你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。\n【這裡之後可以寫跳轉到Stage2劇本】");
-      clearChoices();
-      refreshTagDisplay();
-    })
-  })
-  refreshTagDisplay();
+gameState.stage = "age15Choice";
+clearChoices();
+renderStory("你已經15歲。\n回望成長歲月，你需要選擇接下來主要投入嘅方向：");
+finalAge15Choices.forEach(opt=>{
+addChoice(opt.text, async ()=>{
+opt.effect();
+await gameStorage.save(gameState);
+renderStory("你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。\n【這裡之後可以寫跳轉到Stage2劇本】");
+clearChoices();
+refreshTagDisplay();
+})
+})
+refreshTagDisplay();
 }
 
-// 儲存
-function saveGame(){
-  try{
-    localStorage.setItem("lifeGameSave", JSON.stringify(gameState));
-  }catch(e){
-    console.log("存檔失敗", e);
-  }
+// 載入存檔（改用新抽象層）
+async function loadGame(){
+try{
+let saved = await gameStorage.load();
+if(saved){
+if(saved.birth && saved.trait && saved.stats && saved.stage !== undefined){
+gameState = saved;
+}else{
+localStorage.removeItem("lifeGameSave");
+showStartScreen();
+return;
+}
+}
+}catch(e){
+console.log("存檔損壞，重置遊戲", e);
+localStorage.removeItem("lifeGameSave");
 }
 
-// 載入存檔【重點修復：錯誤捕捉！】
-function loadGame(){
-  try{
-    let saved = localStorage.getItem("lifeGameSave");
-    if(saved){
-      const parsed = JSON.parse(saved);
-      // 簡單檢查存檔必要欄位，如果缺資料就當損壞
-      if(parsed.birth && parsed.trait && parsed.stats && parsed.stage !== undefined){
-        gameState = parsed;
-      }else{
-        // 存檔結構唔完整，直接開新局
-        localStorage.removeItem("lifeGameSave");
-        showStartScreen();
-        return;
-      }
-    }
-  }catch(e){
-    // JSON解析失敗，代表存檔損壞，清除舊存檔
-    console.log("存檔損壞，重置遊戲", e);
-    localStorage.removeItem("lifeGameSave");
-  }
-
-  // 根據當前stage跳轉對應畫面
-  switch(gameState.stage){
-    case "start":
-      showStartScreen();
-      break;
-    case "childhoodEvent":
-      runNextChildhoodEvent();
-      break;
-    case "age15Choice":
-      showAge15FinalChoices();
-      break;
-    default:
-      // stage值唔認得，直接返回開局
-      showStartScreen();
-  }
-  refreshTagDisplay();
+switch(gameState.stage){
+case "start":
+showStartScreen();
+break;
+case "childhoodEvent":
+runNextChildhoodEvent();
+break;
+case "age15Choice":
+showAge15FinalChoices();
+break;
+default:
+showStartScreen();
+}
+refreshTagDisplay();
 }
 
 // ========== 管理員模式功能 ==========
 // 開啟劇情跳轉選單
 function openJumpMenu(){
-  let menuText = "請選擇要跳轉嘅劇情分支：\n";
-  jumpList.forEach((item,i)=>{
-    menuText += `${i+1}. ${item.name}\n`;
-  })
-  let input = prompt(menuText + "\n輸入數字：");
-  let num = parseInt(input);
-  if(!isNaN(num) && num >=1 && num <= jumpList.length){
-    jumpList[num-1].fn();
-  }
+let menuText = "請選擇要跳轉嘅劇情分支：\n";
+jumpList.forEach((item,i)=>{
+menuText += `${i+1}. ${item.name}\n`;
+})
+let input = prompt(menuText + "\n輸入數字：");
+let num = parseInt(input);
+if(!isNaN(num) && num >=1 && num <= jumpList.length){
+jumpList[num-1].fn();
+}
 }
 
 // 進入管理員模式
 function enterAdminMode(){
-  isAdminMode = true;
-  $("#adminOverlay").style.display = "block";
-  refreshTagDisplay();
+isAdminMode = true;
+$("#adminOverlay").style.display = "block";
+refreshTagDisplay();
 }
 // 退出管理員模式
 function exitAdminMode(){
-  isAdminMode = false;
-  $("#adminOverlay").style.display = "none";
+isAdminMode = false;
+$("#adminOverlay").style.display = "none";
 }
 
 // ========== 螢幕點擊序列觸發：上2下3，2.5秒 ==========
@@ -361,59 +451,59 @@ let tapCount = 0;
 let tapTimer = null;
 
 document.addEventListener("click", (e)=>{
-  // ✅ 重點修復：如果點擊嘅係按鈕，唔計入秘密手勢
-  if(e.target.classList.contains("choice-btn") || e.target.classList.contains("admin-over-btn")){
-    return;
-  }
+// 如果點擊嘅係按鈕，唔計入秘密手勢
+if(e.target.classList.contains("choice-btn") || e.target.classList.contains("admin-over-btn")){
+return;
+}
 
-  clearTimeout(tapTimer);
-  tapTimer = setTimeout(()=>{
-    tapPhase = 0;
-    tapCount = 0;
-  }, TAP_TIMEOUT);
+clearTimeout(tapTimer);
+tapTimer = setTimeout(()=>{
+tapPhase = 0;
+tapCount = 0;
+}, TAP_TIMEOUT);
 
-  const winHeight = window.innerHeight;
-  const clickY = e.clientY;
-  const isUpper = clickY < winHeight / 2;
+const winHeight = window.innerHeight;
+const clickY = e.clientY;
+const isUpper = clickY < winHeight / 2;
 
-  if(tapPhase === 0){
-    if(isUpper){
-      tapCount++;
-      if(tapCount >= 2){
-        tapPhase = 1;
-        tapCount = 0;
-      }
-    }
-  }else if(tapPhase === 1){
-    if(!isUpper){
-      tapCount++;
-      if(tapCount >= 3){
-        // 完成序列，彈輸入密碼視窗
-        const pwd = prompt("請輸入管理員密碼");
-        if(pwd === "calvin"){
-          enterAdminMode();
-        }
-        // 重置點擊序列
-        tapPhase = 0;
-        tapCount = 0;
-      }
-    }
-  }
+if(tapPhase === 0){
+if(isUpper){
+tapCount++;
+if(tapCount >= 2){
+tapPhase = 1;
+tapCount = 0;
+}
+}
+}else if(tapPhase === 1){
+if(!isUpper){
+tapCount++;
+if(tapCount >= 3){
+// 完成序列，彈輸入密碼視窗
+const pwd = prompt("請輸入管理員密碼");
+if(pwd === "calvin"){
+enterAdminMode();
+}
+// 重置點擊序列
+tapPhase = 0;
+tapCount = 0;
+}
+}
+}
 });
 
 // 快速跳轉函數
 function jumpToChildhood(){
-  gameState.stage="childhoodEvent";
-  gameState.eventIndex=0;
-  gameState.birthLocked=true;
-  runNextChildhoodEvent();
+gameState.stage="childhoodEvent";
+gameState.eventIndex=0;
+gameState.birthLocked=true;
+runNextChildhoodEvent();
 }
 function jumpToAge15(){
-  gameState.stage="age15Choice";
-  showAge15FinalChoices();
+gameState.stage="age15Choice";
+showAge15FinalChoices();
 }
 
-// 開局
+// 開局載入
 loadGame();
 </script>
 </body>
