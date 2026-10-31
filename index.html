@@ -1,110 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>文字冒險遊戲</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif}
-
-body{
-  /* 整頁背景：BB相片滿版，細寫images */
-  background: url("images/baby.jpg") no-repeat center center;
-  background-size: cover;
-  background-attachment: fixed;
-  min-height: 100vh;
-  color:#fff;
-  padding:16px;
-  line-height:1.6
-}
-#container{max-width:700px;margin:0 auto}
-
-/* 故事對話框 - 半透明深灰 + 模糊，就係你揀嘅方案 */
-#story{
-  font-size:18px;
-  margin-bottom:24px;
-  min-height:120px;
-  background-color: rgba(20,20,20,0.55);
-  backdrop-filter: blur(4px);
-  border-radius:16px;
-  padding:20px;
-}
-
-.choice{
-  display:block;
-  width:100%;
-  padding:14px;
-  margin:8px 0;
-  background:rgba(20,20,20,0.55);
-  backdrop-filter: blur(4px);
-  border:1px solid rgba(255,255,255,0.15);
-  color:#fff;
-  border-radius:16px;
-  font-size:16px;
-  text-align:left
-}
-.choice:active{background:rgba(40,40,40,0.65)}
-</style>
+    <meta charset="UTF-8">
+    <title>BB相片</title>
 </head>
 <body>
-<div id="container">
-  <div id="story"></div>
-  <div id="choices"></div>
-</div>
-<script>
-const gameData = {
-  start:{
-    text:"新的人生即將開始。你的出身條件已經隨機生成。你可以重新抽一次先天設定，或者直接開始成長旅程。",
-    choices:[
-      {text:"開始新一局",next:"doorLeft"},
-      {text:"重新抽取先天屬性",next:"start"}
-    ]
-  },
-  doorLeft:{
-    text:"木門推開，入面係一間廚房，枱上擺住一把舊鎅刀。",
-    choices:[
-      {text:"拿起鎅刀",next:"getKnife"},
-      {text:"返出去大廳",next:"start"}
-    ]
-  },
-  getKnife:{
-    text:"你攞起鎅刀，感覺安心咗少少。廚房窗戶外面黑漆漆。",
-    choices:[
-      {text:"離開廚房返大廳",next:"start"}
-    ]
-  },
-  stairsRight:{
-    text:"你沿樓梯向上行，樓上有一道鎖住嘅房門。",
-    choices:[
-      {text:"試下推門",next:"lockedDoor"},
-      {text:"返落樓",next:"start"}
-    ]
-  },
-  lockedDoor:{
-    text:"門鎖實咗，推唔開，需要搵方法開鎖。",
-    choices:[
-      {text:"返落樓搵工具",next:"start"}
-    ]
-  }
-};
-
-let nowScene = "start";
-const storyEl = document.getElementById("story");
-const choicesEl = document.getElementById("choices");
-
-function render(sceneId){
-  const scene = gameData[sceneId];
-  storyEl.textContent = scene.text;
-  choicesEl.innerHTML = "";
-  scene.choices.forEach(c=>{
-    const btn = document.createElement("button");
-    btn.className="choice";
-    btn.textContent = c.text;
-    btn.onclick = ()=>render(c.next);
-    choicesEl.appendChild(btn);
-  })
-}
-render("start");
-</script>
+    <h1>嬰兒照片</h1>
+    <img src="/Images/baby.jpg" alt="嬰兒照片" width="500">
 </body>
 </html>
