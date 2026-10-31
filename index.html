@@ -2,509 +2,532 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>現實人生｜第1階段 0–15歲少年奠基</title>
+<title>香港人生模擬</title>
 <style>
-*{box-sizing:border-box;font-family:system-ui, sans-serif;margin:0;padding:0}
-body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-height:1.6}
-#container{background:#222;padding:24px;border-radius:12px;min-height:400px}
-#story{margin-bottom:24px;white-space:pre-line;font-size:17px}
-.choice-btn{display:block;width:100%;padding:14px;margin:10px 0;background:#333;color:#fff;border:1px solid #555;border-radius:8px;text-align:left;cursor:pointer;font-size:16px}
-.choice-btn:hover{background:#444;}
-#log{margin-top:20px;color:#aaa;font-size:14px;display:none;}
-
-/* ===== 管理員浮動UI（管理員模式先顯示） ===== */
-#adminOverlay{
-display:none;
-position:fixed;
-top:10px;
-right:10px;
-z-index:999;
-background:#1a1a1a;
-border:1px solid #ffc107;
-padding:12px;
-border-radius:10px;
-max-width:280px;
-}
-#adminOverlay h4{margin:0 0 8px;color:#ffc107;font-size:15px}
-.admin-over-btn{
-display:block;
-width:100%;
-padding:6px 8px;
-margin:4px 0;
-background:#3a3a22;
-color:#ffe;
-border:1px solid #777;
-border-radius:6px;
-cursor:pointer;
-}
-#tagInfo{
-margin-top:8px;
-font-size:12px;
-color:#bbb;
-white-space:pre-wrap;
-}
+#storyText {white-space:pre-line; font-size:16px; margin-bottom:10px;}
+#tagInfo {white-space:pre-line; font-size:14px; color:#444; margin-bottom:10px;}
+button {margin:4px; padding:6px 12px; font-size:15px;}
 </style>
 </head>
 <body>
-<div id="container">
-<div id="story"></div>
-<div id="choices"></div>
-<div id="log"></div>
-</div>
-
-<!-- 管理員浮動面板，會一直跟住畫面 -->
-<div id="adminOverlay">
-<h4>🔧 管理員模式</h4>
-<button class="admin-over-btn" onclick="openJumpMenu()">劇情分支跳轉選單</button>
-<button class="admin-over-btn" onclick="exitAdminMode()">退出管理員模式</button>
+<div id="storyText"></div>
 <div id="tagInfo"></div>
-</div>
+<button id="rerollBtn">重新抽</button>
+<button id="startBtn">開始人生</button>
+<br>
+<button id="optA" style="display:none;">A</button>
+<button id="optB" style="display:none;">B</button>
+<button id="optC" style="display:none;">C</button>
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
-// ========== 遊戲狀態【預設安全狀態】 ==========
-let gameState = {
-birth:{
-gender:"male",
-orientation:"pan",
-familyWealth:"middle",
-birthCountry:"文萊"
-},
-trait:{
-outgoing:50,
-pragmatic:50,
-empathy:50,
-introvert:50
-},
-stats:{
-studyLevel:"medium",
-finance:"low"
-},
-stage:"start",
-eventIndex:0,
-birthLocked: false
-};
-// 管理員模式開關（頁面刷新就重置）
-let isAdminMode = false;
-
-// =====================【重點：儲存抽象層｜為Firebase後端預留接口】=====================
-// 切換模式： prototype = 原型本地模式； firebase = 後端雲端模式（日後啟用）
-const STORAGE_MODE = "prototype"; 
-
-const gameStorage = {
-  // 儲存遊戲存檔
-  async save(saveData) {
-    if(STORAGE_MODE === "prototype"){
-      try{
-        localStorage.setItem("lifeGameSave", JSON.stringify(saveData));
-        return true;
-      }catch(e){
-        console.error("本地存檔失敗", e);
-        return false;
-      }
-    }else if(STORAGE_MODE === "firebase"){
-      // ========= 日後接Firebase時，只需要改寫呢段，其餘遊戲完全唔使動 =========
-      // return await firebaseSaveGame(uid, saveData);
-    }
-  },
-  // 載入遊戲存檔
-  async load() {
-    if(STORAGE_MODE === "prototype"){
-      try{
-        const raw = localStorage.getItem("lifeGameSave");
-        if(raw) return JSON.parse(raw);
-        return null;
-      }catch(e){
-        console.error("載入存檔失敗",e);
-        return null;
-      }
-    }else if(STORAGE_MODE === "firebase"){
-      // return await firebaseLoadGame(uid);
-    }
-  },
-  // 讀取用戶DLC權限 & 免費試玩記錄
-  async getUserPermission() {
-    if(STORAGE_MODE === "prototype"){
-      // 原型用localStorage模擬權限
-      let perm = JSON.parse(localStorage.getItem("lifeGamePermission") || '{"freeTrialUsed":false,"freeTrialStage":"","ownedDLC":[]}');
-      return perm;
-    }else if(STORAGE_MODE === "firebase"){
-      // return await firebaseGetUserPermission(uid);
-    }
-  },
-  // 寫入權限記錄（購買DLC / 使用免費試玩）
-  async setUserPermission(permissionObj) {
-    if(STORAGE_MODE === "prototype"){
-      localStorage.setItem("lifeGamePermission", JSON.stringify(permissionObj));
-      return true;
-    }else if(STORAGE_MODE === "firebase"){
-      // return await firebaseSetUserPermission(uid, permissionObj);
-    }
-  }
-}
-
-// =====================【DLC權限檢查函數｜獨立抽離！日後接Firebase只改呢個函數】=====================
-/**
- * 檢查玩家是否可以解鎖指定階段
- * @param {string} stageKey 階段代號：childhood / teen / youth / middle / elder
- * @returns {Promise<boolean>} 是否解鎖
- */
-async function checkStageUnlock(stageKey){
-  const perm = await gameStorage.getUserPermission();
-  // 童年永久免費
-  if(stageKey === "childhood") return true;
-
-  // 如果玩家未用免費試玩，可以解鎖佢揀嗰個免費階段
-  if(!perm.freeTrialUsed && perm.freeTrialStage === stageKey){
-    return true;
-  }
-  // 檢查是否購買咗呢個DLC
-  if(perm.ownedDLC.includes(stageKey)){
-    return true;
-  }
-  return false;
-}
-
-// 標記玩家已使用免費試玩名額
-async function claimFreeTrial(stageKey){
-  const perm = await gameStorage.getUserPermission();
-  if(perm.freeTrialUsed) return false;
-  perm.freeTrialUsed = true;
-  perm.freeTrialStage = stageKey;
-  await gameStorage.setUserPermission(perm);
-  return true;
-}
-
-// 模擬購買DLC（原型用，正式版由Firebase後台/收款Webhook修改）
-async function addOwnedDLC(dlcKey){
-  const perm = await gameStorage.getUserPermission();
-  if(!perm.ownedDLC.includes(dlcKey)){
-    perm.ownedDLC.push(dlcKey);
-  }
-  await gameStorage.setUserPermission(perm);
-}
-
-// 翻譯字典
+// ======= 翻譯詞庫 =======
 const trans = {
-gender: {male:"男", female:"女"},
-orientation: {hetero:"異性戀", homo:"同性戀", bi:"雙性戀", pan:"泛性戀", asexual:"無性戀"},
-familyWealth: {poor:"貧窮", middle:"中等", rich:"富裕"},
-studyLevel: {low:"低", medium:"中等", high:"高"},
-finance: {low:"低", medium:"中等", high:"高"},
-stage: {
-start:"開局｜抽先天屬性",
-childhoodEvent:"童年事件階段",
-age15Choice:"15歲抉擇階段"
-}
+  gender: {male:"男", female:"女", nonbinary:"非二元"},
+  orientation: {straight:"異性戀", gay:"同性戀", bi:"雙性戀", pan:"泛性戀", asexual:"無性戀"},
+  familyWealth: {poor:"貧窮", lowerMiddle:"中下", middle:"中等", upperMiddle:"中上", rich:"富裕"},
+  studyLevel: {low:"低", medium:"普通", high:"高"},
+  finance: {low:"低", medium:"普通", high:"高"}
+};
+const genderList = ["male","female","nonbinary"];
+const orientationList = ["straight","gay","bi","pan","asexual"];
+const wealthList = ["poor","lowerMiddle","middle","upperMiddle","rich"];
+
+// ======= 其他國家權重池（15%機率先會入呢度抽）weight越高抽到機會越大 =======
+const otherCountryWeightList = [
+  {name:"中華民國(台灣)", weight:22},
+  {name:"日本", weight:20},
+  {name:"韓國", weight:16},
+  {name:"新加坡", weight:15},
+  {name:"馬來西亞", weight:13},
+  {name:"泰國", weight:12},
+  {name:"英國", weight:10},
+  {name:"美國", weight:10},
+  {name:"澳洲", weight:9},
+  {name:"加拿大", weight:9},
+  {name:"菲律賓", weight:8},
+  {name:"越南", weight:8},
+  {name:"印度", weight:7},
+  {name:"巴基斯坦", weight:6},
+  {name:"印尼", weight:6},
+  {name:"德國", weight:6},
+  {name:"法國", weight:6},
+  {name:"新西蘭", weight:5},
+  {name:"老撾", weight:3},
+  {name:"柬埔寨", weight:3},
+  {name:"緬甸", weight:3},
+  {name:"孟加拉國", weight:3},
+  {name:"尼泊爾", weight:2},
+  {name:"斯里蘭卡", weight:2},
+  {name:"沙特阿拉伯", weight:2},
+  {name:"土耳其", weight:2},
+  {name:"巴西", weight:2},
+  {name:"南非", weight:1},
+  {name:"尼日利亞", weight:1},
+  {name:"肯尼亞", weight:1}
+];
+
+// ======= 香港18區居所資料 =======
+const hkDistrictResidenceList = [
+  {
+    district:"油尖旺區",
+    residences:[
+      {type:"公共屋邨", name:"海富苑"},
+      {type:"公共屋邨", name:"富榮花園"},
+      {type:"私人屋苑", name:"嘉文花園"},
+      {type:"豪宅", name:"凱旋門"},
+      {type:"私人屋苑", name:"君滙港"},
+      {type:"私人屋苑", name:"港灣豪庭"},
+      {type:"唐樓", name:"大同新邨"},
+      {type:"唐樓", name:"佐敦舊唐樓"},
+      {type:"單棟唐樓", name:"大角咀舊樓"}
+    ]
+  },
+  {
+    district:"深水埗區",
+    residences:[
+      {type:"公共屋邨", name:"李鄭屋邨"},
+      {type:"公共屋邨", name:"元州邨"},
+      {type:"公共屋邨", name:"幸福邨"},
+      {type:"公共屋邨", name:"麗閣邨"},
+      {type:"公共屋邨", name:"南昌邨"},
+      {type:"私人大型屋苑", name:"美孚新邨"},
+      {type:"唐樓", name:"長沙灣唐樓"},
+      {type:"舊式洋樓", name:"深水埗舊洋樓"}
+    ]
+  },
+  {
+    district:"九龍城區",
+    residences:[
+      {type:"私人屋苑", name:"黃埔花園"},
+      {type:"公共屋邨", name:"愛民邨"},
+      {type:"公共屋邨", name:"何文田邨"},
+      {type:"公共屋邨", name:"紅磡邨"},
+      {type:"私人屋苑", name:"海逸豪園"},
+      {type:"唐樓", name:"土瓜灣唐樓"}
+    ]
+  },
+  {
+    district:"黃大仙區",
+    residences:[
+      {type:"公共屋邨", name:"黃大仙下邨"},
+      {type:"公共屋邨", name:"竹園北邨"},
+      {type:"公共屋邨", name:"彩雲邨"},
+      {type:"公共屋邨", name:"啟晴邨"},
+      {type:"公共屋邨", name:"德朗邨"}
+    ]
+  },
+  {
+    district:"觀塘區",
+    residences:[
+      {type:"公共屋邨", name:"牛頭角下邨"},
+      {type:"公共屋邨", name:"樂華邨"},
+      {type:"公共屋邨", name:"順利邨"},
+      {type:"私人屋苑", name:"麗晶花園"},
+      {type:"私人屋苑", name:"淘大花園"},
+      {type:"唐樓", name:"觀塘舊唐樓"}
+    ]
+  },
+  {
+    district:"中西區",
+    residences:[
+      {type:"私人屋苑", name:"寶翠園"},
+      {type:"私人屋苑", name:"雍景臺"},
+      {type:"豪宅", name:"羅便臣道80號"},
+      {type:"唐樓", name:"荷李活華庭"}
+    ]
+  },
+  {
+    district:"灣仔區",
+    residences:[
+      {type:"私人屋苑", name:"駿逸峰"},
+      {type:"私人屋苑", name:"囍滙"},
+      {type:"豪宅", name:"帝景園"},
+      {type:"私人屋苑", name:"尚翹峰"},
+      {type:"唐樓", name:"灣仔舊唐樓"}
+    ]
+  },
+  {
+    district:"東區",
+    residences:[
+      {type:"公共屋邨", name:"杏花邨"},
+      {type:"公共屋邨", name:"耀東邨"},
+      {type:"公共屋邨", name:"興東邨"},
+      {type:"私人屋苑", name:"康怡花園"},
+      {type:"私人屋苑", name:"太古城"}
+    ]
+  },
+  {
+    district:"南區",
+    residences:[
+      {type:"私人屋苑", name:"香港仔中心"},
+      {type:"公共屋邨", name:"華富邨"},
+      {type:"私人屋苑", name:"海怡半島"},
+      {type:"私人屋苑", name:"薄扶林花園"}
+    ]
+  },
+  {
+    district:"荃灣區",
+    residences:[
+      {type:"公共屋邨", name:"綠楊新邨"},
+      {type:"公共屋邨", name:"福來邨"},
+      {type:"私人屋苑", name:"海濱花園"},
+      {type:"私人屋苑", name:"荃威花園"}
+    ]
+  },
+  {
+    district:"葵青區",
+    residences:[
+      {type:"公共屋邨", name:"葵盛東邨"},
+      {type:"公共屋邨", name:"石籬邨"},
+      {type:"公共屋邨", name:"荔景邨"},
+      {type:"公共屋邨", name:"青衣邨"},
+      {type:"私人屋苑", name:"灝景灣"}
+    ]
+  },
+  {
+    district:"沙田區",
+    residences:[
+      {type:"公共屋邨", name:"美林邨"},
+      {type:"公共屋邨", name:"恆安邨"},
+      {type:"公共屋邨", name:"沙角邨"},
+      {type:"豪宅", name:"名城"},
+      {type:"私人屋苑", name:"第一城"}
+    ]
+  },
+  {
+    district:"大埔區",
+    residences:[
+      {type:"公共屋邨", name:"富善邨"},
+      {type:"公共屋邨", name:"廣福邨"},
+      {type:"私人屋苑", name:"大埔廣場"},
+      {type:"私人屋苑", name:"寶湖花園"}
+    ]
+  },
+  {
+    district:"北區",
+    residences:[
+      {type:"公共屋邨", name:"彩園邨"},
+      {type:"公共屋邨", name:"太平邨"},
+      {type:"公共屋邨", name:"嘉福邨"},
+      {type:"私人屋苑", name:"粉嶺中心"}
+    ]
+  },
+  {
+    district:"元朗區",
+    residences:[
+      {type:"公共屋邨", name:"朗屏邨"},
+      {type:"公共屋邨", name:"天耀邨"},
+      {type:"公共屋邨", name:"天瑞邨"},
+      {type:"私人屋苑", name:"嘉湖山莊"},
+      {type:"村屋", name:"元朗鄉村村屋"}
+    ]
+  },
+  {
+    district:"屯門區",
+    residences:[
+      {type:"公共屋邨", name:"良景邨"},
+      {type:"公共屋邨", name:"田景邨"},
+      {type:"公共屋邨", name:"兆康苑"},
+      {type:"私人屋苑", name:"恆福花園"},
+      {type:"私人屋苑", name:"龍門居"}
+    ]
+  },
+  {
+    district:"西貢區",
+    residences:[
+      {type:"公共屋邨", name:"寶林邨"},
+      {type:"公共屋邨", name:"景林邨"},
+      {type:"公共屋邨", name:"尚德邨"},
+      {type:"私人屋苑", name:"將軍澳中心"},
+      {type:"私人屋苑", name:"東港城"},
+      {type:"村屋", name:"西貢鄉村村屋"}
+    ]
+  },
+  {
+    district:"離島區",
+    residences:[
+      {type:"公共屋邨", name:"東涌逸東邨"},
+      {type:"公共屋邨", name:"東涌富東邨"},
+      {type:"私人屋苑", name:"愉景灣"},
+      {type:"村屋", name:"梅窩銀礦灣村屋"}
+    ]
+  }
+];
+
+// ======= 遊戲狀態 =======
+let gameState = {
+  birth:{
+    gender:"male",
+    orientation:"pan",
+    familyWealth:"middle",
+    birthCountry:"中國香港", // 可見當前國籍，7歲會改
+    district:"油尖旺區",
+    residenceType:"唐樓",
+    residenceName:"大同新邨"
+  },
+  initialNationality:"", // 【隱藏！永不顯示，永不修改】開局原始國籍
+  trait:{
+    outgoing:50,
+    pragmatic:50,
+    empathy:50,
+    introvert:50
+  },
+  stats:{
+    studyLevel:"medium",
+    finance:"low"
+  },
+  age:0, // 角色歲數，用於7歲自動轉國籍
+  stage:"start",
+  eventIndex:0,
+  birthLocked: false,
+  flags:{}
 };
 
-// 亞洲國家列表
-const countryList = [
-"中國","蒙古","朝鮮","韓國","日本","越南","泰國","老撾","柬埔寨","緬甸",
-"馬來西亞","新加坡","文萊","菲律賓","印度尼西亞","東帝汶","印度","巴基斯坦",
-"孟加拉國","尼泊爾","不丹","斯里蘭卡","馬爾代夫","阿富汗","哈薩克斯坦",
-"吉爾吉斯斯坦","塔吉克斯坦","烏茲別克斯坦","土庫曼斯坦","伊朗","伊拉克",
-"沙特阿拉伯","科威特","巴林","卡塔爾","阿聯酋","阿曼","也門","約旦",
-"黎巴嫩","敘利亞","以色列","巴勒斯坦","土耳其","塞浦路斯","格魯吉亞",
-"亞美尼亞","阿塞拜疆"
-];
-const genderList = ["male","female"];
-const orientationList = ["hetero","homo","bi","pan","asexual"];
-const wealthList = ["poor","middle","rich"];
-
-// 童年微型事件庫
-const childhoodEvents = [
-{
-text:"小學時，班裡組織課外活動，同學邀請你一齊參加。",
-choices:[
-{text:"參加活動，同大家一齊玩", delta:{outgoing:+8, introvert:-4}},
-{text:"婉拒邀請，獨自留低看書", delta:{introvert:+8, outgoing:-4}}
- ]
-},
-{
-text:"屋企遇到小困難，父母商量事情，你在旁聽。",
-choices:[
-{text:"嘗試體諒父母，主動詢問是否需要幫忙", delta:{empathy:+7}},
-{text:"唔想介入，返自己房間", delta:{empathy:-3, introvert:+5}}
- ]
-},
-{
-text:"考試成績不理想，你心裡開始思考自己嘅時間應該點樣分配。",
-choices:[
-{text:"決定調整時間，專心溫習", delta:{pragmatic:+6}},
-{text:"覺得分數唔係一切，繼續做自己鍾意嘅事", delta:{pragmatic:-4}}
- ]
-}
-];
-
-// 15歲最終3個大選項
-const finalAge15Choices = [
-{
-text:"專心讀書，希望爭取好成績",
-effect:()=>{
-gameState.stats.studyLevel = "high";
-gameState.stats.finance = "low";
-}
-},
-{
-text:"投入自己嘅興趣愛好，發展專長",
-effect:()=>{
-gameState.stats.studyLevel = "medium";
-gameState.stats.finance = "low";
-}
-},
-{
-text:"希望出社會工作，早點賺錢",
-effect:()=>{
-gameState.stats.studyLevel = "low";
-gameState.stats.finance = "medium";
-}
-}
-];
-
-// 【劇情分支跳轉清單】之後新增章節直接加入呢度
-const jumpList = [
-{name:"開局｜抽先天屬性", fn:()=>showStartScreen()},
-{name:"童年事件起點", fn:()=>jumpToChildhood()},
-{name:"15歲選擇畫面", fn:()=>jumpToAge15()}
-];
-
-// UI輔助
-const $ = s=>document.querySelector(s);
-const $$ = s=>document.querySelectorAll(s);
-
-function renderStory(txt){
-  $("#story").innerText = txt;
-}
-function clearChoices(){
-  $("#choices").innerHTML="";
-}
-function addChoice(text, callback){
-  let btn = document.createElement("button");
-  btn.className="choice-btn";
-  btn.innerText=text;
-  btn.onclick=callback;
-  $("#choices").appendChild(btn);
-}
-function showLog(txt){
-  $("#log").innerText = txt;
+// ======= 加權抽其他國家（rollOtherCountryPool） =======
+function rollOtherCountryPool(){
+  let totalWeight = 0;
+  for(let c of otherCountryWeightList){
+    totalWeight += c.weight;
+  }
+  let r = Math.random() * totalWeight;
+  let acc = 0;
+  for(let c of otherCountryWeightList){
+    acc += c.weight;
+    if(r <= acc){
+      return c.name;
+    }
+  }
+  return "中華民國(台灣)";
 }
 
-// 更新隱藏標籤【全中文版本】
+// ======= 抽國籍主函數 =======
+function rollNationality(){
+  const r = Math.random();
+  if(r < 0.65){
+    gameState.birth.birthCountry = "中國香港";
+  }else if(r < 0.65 + 0.20){
+    gameState.birth.birthCountry = "中國";
+  }else{
+    gameState.birth.birthCountry = rollOtherCountryPool();
+  }
+  // 鎖定初始國籍，永久不變（隱藏變數）
+  gameState.initialNationality = gameState.birth.birthCountry;
+}
+
+// ======= 抽香港區同居所 =======
+function rollHKResidence(){
+  const randDistrict = hkDistrictResidenceList[Math.floor(Math.random() * hkDistrictResidenceList.length)];
+  gameState.birth.district = randDistrict.district;
+  const randRes = randDistrict.residences[Math.floor(Math.random() * randDistrict.residences.length)];
+  gameState.birth.residenceType = randRes.type;
+  gameState.birth.residenceName = randRes.name;
+}
+
+// ======= 抽全部出生屬性（重新抽按鈕） =======
+function rollBirthAttributes(){
+  gameState.birth.gender = genderList[Math.floor(Math.random()*genderList.length)];
+  gameState.birth.orientation = orientationList[Math.floor(Math.random()*orientationList.length)];
+  gameState.birth.familyWealth = wealthList[Math.floor(Math.random()*wealthList.length)];
+  rollNationality();
+  rollHKResidence();
+  gameState.birthLocked = false;
+  gameState.age = 0;
+}
+
+// ======= 7歲自動轉換當前國籍為香港（initialNationality不變） =======
+function autoChangeNationalityToHK(){
+  gameState.birth.birthCountry = "中國香港";
+}
+
+// ======= 渲染故事文字 =======
+function renderStory(text){
+  $("#storyText").text(text);
+}
+
+// ======= 更新標籤面板（只顯示可見資料，唔顯示 initialNationality） =======
 function refreshTagDisplay(){
-const g = gameState;
-const txt = `【隱藏標籤】
+  const g = gameState;
+  let locationText = `國籍：${g.birth.birthCountry}`;
+  locationText += `\n香港分區：${g.birth.district}\n住所類型：${g.birth.residenceType}\n樓宇名稱：${g.birth.residenceName}`;
+
+  const txt = `【狀態面板】
 性別：${trans.gender[g.birth.gender]}
 性取向：${trans.orientation[g.birth.orientation]}
 家庭經濟：${trans.familyWealth[g.birth.familyWealth]}
-出生國家：${g.birth.birthCountry}
+${locationText}
 
 性格屬性
-外向：${g.trait.outgoing}
-務實：${g.trait.pragmatic}
-同理心：${g.trait.empathy}
-內向：${g.trait.introvert}
+外向：${g.trait.outgoing}｜務實：${g.trait.pragmatic}｜同理心：${g.trait.empathy}｜內向：${g.trait.introvert}
 
 狀態
 學業水平：${trans.studyLevel[g.stats.studyLevel]}
 財務：${trans.finance[g.stats.finance]}
-當前階段索引：${g.eventIndex}
+角色歲數：${g.age}
 出生屬性已鎖定：${g.birthLocked}`;
-$("#tagInfo").innerText = txt;
+  $("#tagInfo").text(txt);
 }
 
-// 隨機抽取先天屬性
-function rollBirthAttributes(){
-gameState.birth.gender = genderList[Math.floor(Math.random()*genderList.length)];
-gameState.birth.orientation = orientationList[Math.floor(Math.random()*orientationList.length)];
-gameState.birth.familyWealth = wealthList[Math.floor(Math.random()*wealthList.length)];
-gameState.birth.birthCountry = countryList[Math.floor(Math.random()*countryList.length)];
+// 隱藏所有選項按鈕
+function hideAllOption(){
+  $("#optA").hide();
+  $("#optB").hide();
+  $("#optC").hide();
 }
 
-// 開局畫面
-function showStartScreen(){
-clearChoices();
-gameState.stage = "start";
-gameState.birthLocked = false;
-rollBirthAttributes();
-renderStory("新的人生即將開始。\n你的出身條件已經隨機生成。\n你可以重新抽一次先天設定，或者直接開始成長旅程。");
-addChoice("開始新一局", async ()=>{
-gameState.birthLocked = true;
-gameState.eventIndex = 0;
-gameState.stage = "childhoodEvent";
-renderStory("你的人生開始。\n從0歲到15歲，你在成長之中，經歷一連串日常小事，慢慢塑造你的性格。");
-await gameStorage.save(gameState);
-runNextChildhoodEvent();
-});
-addChoice("重新抽取先天屬性", ()=>{
-rollBirthAttributes();
-renderStory("已重新隨機抽取出身設定。\n你可以再次重抽，或者直接開始。");
-refreshTagDisplay();
-});
-refreshTagDisplay();
+// ====================== 事件劇本 ======================
+// 0歲 嬰兒時期
+function runAge0Event(){
+  const g = gameState;
+  g.flags.babySurvived = true;
+  g.age = 0;
+
+  let wealthDesc = "";
+  switch(g.birth.familyWealth){
+    case "poor":
+      wealthDesc = "屋企地方細，環境簡樸，父母要長時間打工先可以維持生計。";
+      break;
+    case "lowerMiddle":
+      wealthDesc = "僅僅夠溫飽，每使一筆錢都要小心計算。";
+      break;
+    case "middle":
+      wealthDesc = "家境普通，衣食唔使憂，但唔可以隨便亂使。";
+      break;
+    case "upperMiddle":
+      wealthDesc = "家庭條件唔錯，生活舒適，有餘錢供你日後讀書。";
+      break;
+    case "rich":
+      wealthDesc = "家境優渥，單位設備齊全，父母有充足時間同資源照顧你。";
+      break;
+    default:
+      wealthDesc = "家境普通，衣食唔使憂。";
+  }
+
+  renderStory(`# 0歲 · 嬰兒時期
+你於${g.birth.district}，${g.birth.residenceType}「${g.birth.residenceName}」出世。
+國籍：${g.birth.birthCountry}
+
+${wealthDesc}
+眼前嘅世界朦朦朧朧，只聽到父母同親人嘅聲音圍繞住你。
+你仲唔識講說話，淨係會靠喊同笑去表達感受。
+
+日子一日一日咁過，你慢慢開始認得身邊嘅人。
+【歲月推進，來到3歲】`);
+  refreshTagDisplay();
+  setTimeout(()=>runAge3Event(),2000);
 }
 
-// 執行童年微型事件
-function runNextChildhoodEvent(){
-clearChoices();
-let idx = gameState.eventIndex;
-if(idx >= childhoodEvents.length){
-showAge15FinalChoices();
-return;
-}
-let evt = childhoodEvents[idx];
-renderStory(evt.text);
-evt.choices.forEach(ch=>{
-addChoice(ch.text, async ()=>{
-for(let key in ch.delta){
-gameState.trait[key] = Math.max(0, Math.min(100, gameState.trait[key] + ch.delta[key]));
-}
-gameState.eventIndex++;
-await gameStorage.save(gameState);
-runNextChildhoodEvent();
-})
-})
-refreshTagDisplay();
+// 3歲 幼兒時期
+function runAge3Event(){
+  const g = gameState;
+  g.age = 3;
+  renderStory(`# 3歲 · 幼兒時期
+你已經學識行路同講簡單字句，大多數時間都留係屋企同父母一齊。
+今日父母放工返屋企，終於有空陪你。
+
+你會點做？
+A｜主動行過去，拉住父母隻手，主動撒嬌一齊玩
+B｜安靜坐喺隔離，睇住父母做嘢，唔主動打擾
+C｜怕生，如果見到陌生人就即刻匿喺父母身後`);
+  refreshTagDisplay();
+
+  $("#optA").text("A｜主動親近父母");
+  $("#optB").text("B｜安靜係旁邊觀察");
+  $("#optC").text("C｜怕生匿埋");
+  $("#optA").show();
+  $("#optB").show();
+  $("#optC").show();
+
+  $("#optA").off("click").on("click",()=>{
+    g.trait.outgoing += 8;
+    g.trait.empathy += 5;
+    g.flags.familyBond = "close";
+    nextStage3A();
+  })
+  $("#optB").off("click").on("click",()=>{
+    g.trait.introvert += 8;
+    g.trait.pragmatic +=5;
+    g.flags.familyBond = "calm";
+    nextStage3B();
+  })
+  $("#optC").off("click").on("click",()=>{
+    g.trait.introvert +=12;
+    g.trait.outgoing -=4;
+    g.flags.familyBond = "shy";
+    nextStage3C();
+  })
 }
 
-// 15歲，最終三大顯性選擇
-function showAge15FinalChoices(){
-gameState.stage = "age15Choice";
-clearChoices();
-renderStory("你已經15歲。\n回望成長歲月，你需要選擇接下來主要投入嘅方向：");
-finalAge15Choices.forEach(opt=>{
-addChoice(opt.text, async ()=>{
-opt.effect();
-await gameStorage.save(gameState);
-renderStory("你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。\n【這裡之後可以寫跳轉到Stage2劇本】");
-clearChoices();
-refreshTagDisplay();
-})
-})
-refreshTagDisplay();
+function nextStage3A(){
+  hideAllOption();
+  const g = gameState;
+  renderStory(`你主動撲向父母，拉住佢哋一齊玩。
+父母見到咁開心，花好多時間陪你，你同屋企人感情變得非常親密。
+【歲月推進，來到6歲，準備入小學】`);
+  refreshTagDisplay();
+  setTimeout(()=>runAge6Event(),2000);
 }
 
-// 載入存檔（改用新抽象層）
-async function loadGame(){
-try{
-let saved = await gameStorage.load();
-if(saved){
-if(saved.birth && saved.trait && saved.stats && saved.stage !== undefined){
-gameState = saved;
-}else{
-localStorage.removeItem("lifeGameSave");
-showStartScreen();
-return;
-}
-}
-}catch(e){
-console.log("存檔損壞，重置遊戲", e);
-localStorage.removeItem("lifeGameSave");
+function nextStage3B(){
+  hideAllOption();
+  const g = gameState;
+  renderStory(`你靜靜坐係隔離睇父母做家務，唔會騷擾佢哋。
+父母覺得你好乖，屋企氣氛平和；但你慢慢習慣唔主動表達自己感受。
+【歲月推進，來到6歲，準備入小學】`);
+  refreshTagDisplay();
+  setTimeout(()=>runAge6Event(),2000);
 }
 
-switch(gameState.stage){
-case "start":
-showStartScreen();
-break;
-case "childhoodEvent":
-runNextChildhoodEvent();
-break;
-case "age15Choice":
-showAge15FinalChoices();
-break;
-default:
-showStartScreen();
-}
-refreshTagDisplay();
+function nextStage3C(){
+  hideAllOption();
+  const g = gameState;
+  renderStory(`一旦有陌生人上門，你即刻匿喺父母身後唔肯出聲。
+父母知道你比較膽小，會多啲保護你；但你對外人會比較有戒心。
+【歲月推進，來到6歲，準備入小學】`);
+  refreshTagDisplay();
+  setTimeout(()=>runAge6Event(),2000);
 }
 
-// ========== 管理員模式功能 ==========
-// 開啟劇情跳轉選單
-function openJumpMenu(){
-let menuText = "請選擇要跳轉嘅劇情分支：\n";
-jumpList.forEach((item,i)=>{
-menuText += `${i+1}. ${item.name}\n`;
-})
-let input = prompt(menuText + "\n輸入數字：");
-let num = parseInt(input);
-if(!isNaN(num) && num >=1 && num <= jumpList.length){
-jumpList[num-1].fn();
-}
+// 6歲事件（留空，後續再寫）
+function runAge6Event(){
+  const g = gameState;
+  g.age = 6;
+  renderStory(`# 6歲 · 準備入小學
+（呢個事件後續開發）`);
+  refreshTagDisplay();
+  // 日後喺度加入7歲檢查，觸發 autoChangeNationalityToHK()
 }
 
-// 進入管理員模式
-function enterAdminMode(){
-isAdminMode = true;
-$("#adminOverlay").style.display = "block";
-refreshTagDisplay();
-}
-// 退出管理員模式
-function exitAdminMode(){
-isAdminMode = false;
-$("#adminOverlay").style.display = "none";
-}
+// ======= 按鈕綁定 =======
+$("#rerollBtn").on("click", ()=>{
+  rollBirthAttributes();
+  refreshTagDisplay();
+  renderStory(`新的人生即將開始。
+國籍：${gameState.birth.birthCountry}
+你出生於${gameState.birth.district}，居於${gameState.birth.residenceType}「${gameState.birth.residenceName}」
 
-// ========== 螢幕點擊序列觸發：上2下3，2.5秒 ==========
-const TAP_TIMEOUT = 2500;
-let tapPhase = 0; // 0:等待上半 1:等待下半
-let tapCount = 0;
-let tapTimer = null;
-
-document.addEventListener("click", (e)=>{
-// 如果點擊嘅係按鈕，唔計入秘密手勢
-if(e.target.classList.contains("choice-btn") || e.target.classList.contains("admin-over-btn")){
-return;
-}
-
-clearTimeout(tapTimer);
-tapTimer = setTimeout(()=>{
-tapPhase = 0;
-tapCount = 0;
-}, TAP_TIMEOUT);
-
-const winHeight = window.innerHeight;
-const clickY = e.clientY;
-const isUpper = clickY < winHeight / 2;
-
-if(tapPhase === 0){
-if(isUpper){
-tapCount++;
-if(tapCount >= 2){
-tapPhase = 1;
-tapCount = 0;
-}
-}
-}else if(tapPhase === 1){
-if(!isUpper){
-tapCount++;
-if(tapCount >= 3){
-// 完成序列，彈輸入密碼視窗
-const pwd = prompt("請輸入管理員密碼");
-if(pwd === "calvin"){
-enterAdminMode();
-}
-// 重置點擊序列
-tapPhase = 0;
-tapCount = 0;
-}
-}
-}
+所有先天背景由系統隨機生成，你可以無限次重新抽選。
+揀到滿意嘅出身之後，點擊【開始人生】。`);
+  hideAllOption();
 });
 
-// 快速跳轉函數
-function jumpToChildhood(){
-gameState.stage="childhoodEvent";
-gameState.eventIndex=0;
-gameState.birthLocked=true;
-runNextChildhoodEvent();
-}
-function jumpToAge15(){
-gameState.stage="age15Choice";
-showAge15FinalChoices();
-}
+$("#startBtn").on("click", ()=>{
+  gameState.birthLocked = true;
+  hideAllOption();
+  runAge0Event();
+});
 
-// 開局載入
-loadGame();
+// 頁面載入預先抽一次
+$(document).ready(function(){
+  rollBirthAttributes();
+  refreshTagDisplay();
+  renderStory(`新的人生即將開始。
+國籍：${gameState.birth.birthCountry}
+你出生於${gameState.birth.district}，居於${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+
+所有先天背景由系統隨機生成，你可以無限次重新抽選。
+揀到滿意嘅出身之後，點擊【開始人生】。`);
+});
 </script>
 </body>
 </html>
