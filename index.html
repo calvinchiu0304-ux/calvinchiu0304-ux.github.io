@@ -3,7 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Meta 防快取設定 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <title>文字冒險遊戲</title>
+<script>
+// 自動繞過快取：只自動刷新一次，唔會無限循環
+(function() {
+  if (!sessionStorage.getItem('freshLoaded')) {
+    sessionStorage.setItem('freshLoaded', '1');
+    location.href = location.pathname + "?v=" + Date.now();
+  }
+})();
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif}
 
@@ -16,9 +29,9 @@ body{
   line-height:1.6
 }
 
-/* 專門給開頭場景用的背景樣式（BB圖） */
+/* 開頭場景專用 BB 背景，加上圖片版本戳 */
 body.start-bg{
-  background: url("baby.jpg") no-repeat center center;
+  background: url("baby.jpg?v=20261031") no-repeat center center;
   background-size: cover;
 }
 
@@ -106,7 +119,7 @@ function render(sceneId){
   storyEl.textContent = scene.text;
   choicesEl.innerHTML = "";
 
-  // 判斷：只有 start 場景先加BB背景
+  // 只有 start 場景先顯示BB背景
   if(sceneId === "start"){
     bodyEl.classList.add("start-bg");
   }else{
