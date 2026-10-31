@@ -6,31 +6,59 @@
 <title>文字冒險遊戲</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui, sans-serif}
-body{background:#111;color:#eee;padding:16px;line-height:1.6}
+
+body{
+  /* 整頁背景：BB相片滿版 */
+  background: url("Images/baby.jpg") no-repeat center center;
+  background-size: cover;
+  min-height: 100vh;
+  color:#fff;
+  padding:16px;
+  line-height:1.6
+}
 #container{max-width:700px;margin:0 auto}
-#story{font-size:18px;margin-bottom:24px;min-height:120px}
-#imgBox{margin-bottom:20px;text-align:center}
-#imgBox img{max-width:100%;border-radius:8px}
-.choice{display:block;width:100%;padding:14px;margin:8px 0;background:#222;border:1px solid #444;color:#fff;border-radius:8px;font-size:16px;text-align:left}
-.choice:active{background:#333}
+
+/* 故事對話框 - 半透明深灰 + 模糊，就係你揀嘅方案 */
+#story{
+  font-size:18px;
+  margin-bottom:24px;
+  min-height:120px;
+  background-color: rgba(20,20,20,0.55);
+  backdrop-filter: blur(4px);
+  border-radius:16px;
+  padding:20px;
+}
+
+.choice{
+  display:block;
+  width:100%;
+  padding:14px;
+  margin:8px 0;
+  background:rgba(20,20,20,0.55);
+  backdrop-filter: blur(4px);
+  border:1px solid rgba(255,255,255,0.15);
+  color:#fff;
+  border-radius:16px;
+  font-size:16px;
+  text-align:left
+}
+.choice:active{background:rgba(40,40,40,0.65)}
 </style>
 </head>
 <body>
 <div id="container">
-<div id="imgBox">
-<img src="images/baby.jpg" alt="開局圖">
-</div>
-<div id="story"></div>
-<div id="choices"></div>
+  <!-- 刪走原本單獨嘅 imgBox，而家圖片做背景 -->
+  <div id="story"></div>
+  <div id="choices"></div>
 </div>
 <script>
 const gameData = {
   start:{
-    text:"你醒咗，發現自己喺一間古老大屋入面，周圍陰沉沉。門有兩個方向：左邊木門，右邊樓梯。",
-    image:"images/baby.jpg",
+    text:"新的人生即將開始。你的出身條件已經隨機生成。你可以重新抽一次先天設定，或者直接開始成長旅程。",
+    // 呢度唔再需要單獨image，圖片用body背景
     choices:[
-      {text:"走左邊木門",next:"doorLeft"},
-      {text:"行右邊樓梯",next:"stairsRight"}
+      {text:"開始新一局",next:"doorLeft"},
+      {text:"重新抽取先天屬性",next:"start"}
     ]
   },
   doorLeft:{
@@ -64,12 +92,10 @@ const gameData = {
 let nowScene = "start";
 const storyEl = document.getElementById("story");
 const choicesEl = document.getElementById("choices");
-const imgEl = document.querySelector("#imgBox img");
 
 function render(sceneId){
   const scene = gameData[sceneId];
   storyEl.textContent = scene.text;
-  if(scene.image) imgEl.src = scene.image;
   choicesEl.innerHTML = "";
   scene.choices.forEach(c=>{
     const btn = document.createElement("button");
