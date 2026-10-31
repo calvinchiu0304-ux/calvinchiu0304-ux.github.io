@@ -7,11 +7,37 @@
 <style>
 *{box-sizing:border-box;font-family:system-ui, sans-serif;margin:0;padding:0}
 body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-height:1.6}
-#container{background:#222;padding:24px;border-radius:12px;min-height:400px}
+#container{background:#222;padding:24px;border-radius:12px;min-height:400px;position:relative;}
 #story{margin-bottom:24px;white-space:pre-line;font-size:17px}
 .choice-btn{display:block;width:100%;padding:14px;margin:10px 0;background:#333;color:#fff;border:1px solid #555;border-radius:8px;text-align:left;cursor:pointer;font-size:16px}
 .choice-btn:hover{background:#444;}
 #log{margin-top:20px;color:#aaa;font-size:14px;display:none;}
+
+/* ===== 劇本跳過按鈕樣式 ===== */
+#skipScriptBtn{
+  position:absolute;
+  bottom:12px;
+  right:12px;
+  background:rgba(80,80,80,0.45);
+  color:#ddd;
+  border:none;
+  border-radius:6px;
+  padding:6px 10px;
+  font-size:14px;
+  cursor:pointer;
+  display:none;
+}
+#skipScriptBtn:hover{
+  background:rgba(110,110,110,0.6);
+}
+#scriptTimerText{
+  position:absolute;
+  bottom:12px;
+  left:12px;
+  color:#bbb;
+  font-size:14px;
+  display:none;
+}
 
 /* ===== 管理員浮動UI（管理員模式先顯示） ===== */
 #adminOverlay{
@@ -51,6 +77,9 @@ white-space:pre-wrap;
 <div id="story"></div>
 <div id="choices"></div>
 <div id="log"></div>
+<!-- 劇本跳過按鈕 + 倒數文字 -->
+<button id="skipScriptBtn">【點擊跳過劇本】</button>
+<div id="scriptTimerText"></div>
 </div>
 
 <!-- 管理員浮動面板，會一直跟住畫面 -->
@@ -62,6 +91,196 @@ white-space:pre-wrap;
 </div>
 
 <script>
+// ========== 劇本計時全域參數 ==========
+const BASE_WORD_COUNT = 100;    // 基準字數
+const BASE_SECONDS = 5;         // 基準秒數（100字對應5秒）
+const MIN_WAIT_SEC = 3;         // 最少等待時間
+const MAX_WAIT_SEC = 30;        // 最長等待上限
+let scriptTimer = null;
+let scriptRemainingTime = 0;
+let scriptNextCallback = null;
+
+// ========== 劇本等待時間計算函數 ==========
+function calcScriptWaitTime(scriptText) {
+    // 清除空格、換行，標點會計入字數
+    const cleanText = scriptText.replace(/ /g,"").replace(/\n/g,"");
+    const totalChars = cleanText.length;
+    let rawTime = (totalChars / BASE_WORD_COUNT) * BASE_SECONDS;
+    let finalTime = Math.max(MIN_WAIT_SEC, Math.min(rawTime, MAX_WAIT_SEC));
+    return parseFloat(finalTime.toFixed(1));
+}
+
+// ========== 劇本播放函數（帶倒數 + 跳過按鈕） ==========
+// text：劇本文字，nextFunc：倒數完/玩家跳過之後執行嘅函數
+function showScriptWithTimer(text, nextFunc) {
+    clearChoices();
+    renderStory(text);
+    scriptNextCallback = nextFunc;
+    scriptRemainingTime = calcScriptWaitTime(text);
+
+    const skipBtn = document.getElementById("skipScriptBtn");
+    const timerText = document.getElementById("scriptTimerText");
+    skipBtn.style.display = "block";
+    timerText.style.display = "block";
+    timerText.innerText = `等待 ${scriptRemainingTime}s`;
+
+    // 清除舊計時器
+    if(scriptTimer) clearInterval(scriptTimer);
+
+    scriptTimer = setInterval(()=>{
+        scriptRemainingTime -= 0.1;
+        if(scriptRemainingTime <= 0){
+            finishScriptView();
+        }else{
+            timerText.innerText = `等待 ${scriptRemainingTime.toFixed(1)}s`;
+        }
+    },100);
+}
+
+// 跳過劇本 / 倒數完結時執行
+function finishScriptView(){
+    if(scriptTimer) clearInterval(scriptTimer);
+    document.getElementById("skipScriptBtn").style.display = "none";
+    document.getElementById("scriptTimerText").style.display = "none";
+    if(scriptNextCallback){
+        const cb = scriptNextCallback;
+        scriptNextCallback = null;
+        cb();
+    }
+}
+
+// 綁定跳過按鈕點擊事件
+document.getElementById("skipScriptBtn").onclick = function(){
+    finishScriptView();
+};
+
+
+// ========== 【新增】地區數據庫（10區｜家境概率 + 出身背景概率 + 區域描述） ==========
+const districtData = {
+  "半山區": {
+    wealthProb: {rich:0.70, middle:0.28, poor:0.02},
+    originProb: {localHK:0.35, uk:0.25, sg:0.15, cnMainland:0.20, others:0.05},
+    desc: "豪宅集中地，多為跨國企業高層、舊家族；少量為繼承舊大屋但現金拮据嘅家庭"
+  },
+  "西貢": {
+    wealthProb: {rich:0.40, middle:0.50, poor:0.10},
+    originProb: {localHK:0.60, uk:0.10, sg:0.05, cnMainland:0.20, others:0.05},
+    desc: "豪宅同鄉村屋並存；有富裕城鄉避世家庭，亦有務農、漁民基層"
+  },
+  "沙田": {
+    wealthProb: {rich:0.10, middle:0.75, poor:0.15},
+    originProb: {localHK:0.75, uk:0.03, sg:0.02, cnMainland:0.18, others:0.02},
+    desc: "大型新市鎮，大多數為打工中產；新移民家庭比例偏高，少量專業人士"
+  },
+  "大埔": {
+    wealthProb: {rich:0.08, middle:0.72, poor:0.20},
+    originProb: {localHK:0.78, uk:0.02, sg:0.01, cnMainland:0.17, others:0.02},
+    desc: "新市鎮+鄉郊混合，中產為主，鄉村基層較多"
+  },
+  "將軍澳": {
+    wealthProb: {rich:0.05, middle:0.80, poor:0.15},
+    originProb: {localHK:0.82, uk:0.01, sg:0.01, cnMainland:0.15, others:0.01},
+    desc: "年輕中產家庭為主，公屋同私樓並存，外地出身比例偏低"
+  },
+  "九龍塘": {
+    wealthProb: {rich:0.60, middle:0.35, poor:0.05},
+    originProb: {localHK:0.45, uk:0.20, sg:0.10, cnMainland:0.20, others:0.05},
+    desc: "傳統豪宅區、名校網；少數係舊細單位唐樓住戶"
+  },
+  "深水埗": {
+    wealthProb: {rich:0.02, middle:0.48, poor:0.50},
+    originProb: {localHK:0.65, uk:0.01, sg:0.01, cnMainland:0.20, southAsia:0.12, others:0.01},
+    desc: "舊唐樓、公屋密集；基層為主，有少量紮根舊區本土商人、南亞裔家庭"
+  },
+  "觀塘": {
+    wealthProb: {rich:0.03, middle:0.52, poor:0.45},
+    originProb: {localHK:0.70, uk:0.01, sg:0.01, cnMainland:0.22, southAsia:0.05, others:0.01},
+    desc: "舊工業區轉型，公屋多，藍領家庭為主"
+  },
+  "元朗舊墟": {
+    wealthProb: {rich:0.02, middle:0.43, poor:0.55},
+    originProb: {localHK:0.62, uk:0.00, sg:0.00, cnMainland:0.25, southAsia:0.11, others:0.02},
+    desc: "鄉村同舊墟並存，基層、務農家庭多；新移民同少數族裔比例高"
+  },
+  "灣仔": {
+    wealthProb: {rich:0.35, middle:0.55, poor:0.10},
+    originProb: {localHK:0.50, uk:0.12, sg:0.08, cnMainland:0.25, others:0.05},
+    desc: "商業核心，豪宅同舊唐樓一街之隔；有大量從事服務業嘅基層同專業人士"
+  }
+}
+/*
+出身代碼含義
+localHK：香港本地土生家庭
+uk：英國背景 / 英籍回流
+sg：新加坡背景
+cnMainland：內地新移民
+southAsia：南亞裔（巴基斯坦、印度、尼泊爾等）
+others：其他國家
+*/
+
+// ==========【新增】通用概率抽籤函數 ==========
+function rollByProb(probObj){
+  const total = Object.values(probObj).reduce((a,b)=>a+b,0);
+  let r = Math.random() * total;
+  for(let key in probObj){
+    r -= probObj[key];
+    if(r <= 0) return key;
+  }
+}
+
+// ==========【新增】角色出身背景生成器（套用你最新修改劇文） ==========
+function generateBirthBackground(gameState){
+  const {district, familyWealth, origin} = gameState.birth;
+  let originText = "";
+  switch(origin){
+    case "localHK": originText = "土生土長香港家庭"; break;
+    case "uk": originText = "英國背景回流家庭"; break;
+    case "sg": originText = "新加坡背景家庭"; break;
+    case "cnMainland": originText = "內地新移民家庭"; break;
+    case "southAsia": originText = "南亞裔家庭"; break;
+    case "others": originText = "其他海外背景家庭"; break;
+  }
+
+  let wealthDesc = "";
+  // 你最新更新嘅財富+地區劇文
+  if(familyWealth === "rich"){
+    if(district === "半山區" || district === "九龍塘"){
+      wealthDesc = "優質物業價值極高，父母係跨國高管、老牌家族比例較多。普遍資源充足，私人補習、海外遊學機會高；但多數父母工作極忙，陪伴時間少。";
+    }else if(district === "西貢"){
+      wealthDesc = "自置鄉村屋居多，家人普遍為經營生意或者專業人士。居住空間大，環境寧靜；生活節奏比較放鬆，但國際人脈較少。";
+    }else if(district === "深水埗"){
+      wealthDesc = "舊區本土小型地產商、批發生意人。家族有物業收租比例較多，習慣留喺舊區生活，生活作風低調；熟悉社區網絡，街坊關係良好。";
+    }else{
+      wealthDesc = "家庭經濟條件良好，生活穩定，有能力負擔唔少課外開支。";
+    }
+  }
+  else if(familyWealth === "middle"){
+    if(district === "沙田" || district === "將軍澳"){
+      wealthDesc = "典型香港打工中產比例較多。通常擁有私樓/居屋，父母多數為文職、教師、護士等。收入穩定，平均儲蓄比例中上，多數家庭重視學業，期望仔女讀好大學。";
+    }else if(district === "灣仔"){
+      wealthDesc = "普遍舊樓細單位，收入尚可，但租金/生活開支高。生活喺市中心，見識多，接觸好多不同國籍嘅人。";
+    }else if(district === "西貢"){
+      wealthDesc = "多數鄉村家庭，可能做小生意或者散工多，居住空間大，但交通唔方便。";
+    }else{
+      wealthDesc = "家境普通，衣食無憂，不過冇太多多餘金錢用喺昂貴課外活動。";
+    }
+  }
+  else if(familyWealth === "poor"){
+    if(district === "半山區"){
+      wealthDesc = "特例困境：祖上留低半山舊大宅，物業天價，上一代因為童年太富裕，生活揮霍，痛失學習成長或商業機會，開支過大，導致現金收入微薄。維修、差餉開支沉重，「有樓冇錢」。外表係豪宅，實際生活拮據。";
+    }else{
+      wealthDesc = "公屋或者細舊唐樓，普遍父母工作為藍領、散工，通常收入比較唔穩定。有時要面對房租壓力、生活開支壓力。資源有限，補習、課外活動有可能係奢侈品。";
+    }
+  }
+
+  // 組合完整開場背景文字
+  const fullBio = `【出身背景】
+居住地：${district}
+家庭背景：${originText}
+${wealthDesc}`;
+  return fullBio;
+}
+
 // ========== 遊戲狀態【預設安全狀態】 ==========
 let gameState = {
 birth:{
@@ -71,7 +290,8 @@ familyWealth:"middle",
 birthCountry:"文萊", // 可見國籍，7歲自動改成中國香港
 district:"葵青區",
 residenceType:"公共屋邨",
-residenceName:"青衣邨"
+residenceName:"青衣邨",
+origin:"localHK" //【新增】家庭出身標籤，配合districtData.originProb
 },
 initialNationality:"", // 【隱藏！永久不變，唔顯示畀玩家】開局原始抽到嘅國籍
 trait:{
@@ -205,6 +425,14 @@ age0:"0歲嬰兒時期",
 age3:"3歲幼兒時期",
 childhoodEvent:"童年事件階段",
 age15Choice:"15歲抉擇階段"
+},
+origin:{
+  localHK:"香港本地土生家庭",
+  uk:"英國背景回流家庭",
+  sg:"新加坡背景家庭",
+  cnMainland:"內地新移民家庭",
+  southAsia:"南亞裔家庭",
+  others:"其他海外背景家庭"
 }
 };
 
@@ -434,9 +662,22 @@ const hkDistrictResidenceList = [
   }
 ];
 
+// 【新增】 對照表：我們10個故事區 → 香港18區行政區，用來搵居所
+const storyDistrictToHKAdminDistrict = {
+  "半山區":"中西區",
+  "西貢":"西貢區",
+  "沙田":"沙田區",
+  "大埔":"大埔區",
+  "將軍澳":"西貢區",
+  "九龍塘":"九龍城區",
+  "深水埗":"深水埗區",
+  "觀塘":"觀塘區",
+  "元朗舊墟":"元朗區",
+  "灣仔":"灣仔區"
+};
+
 const genderList = ["male","female"];
 const orientationList = ["hetero","homo","bi","pan","asexual"];
-const wealthList = ["poor","middle","rich"];
 
 // 童年微型事件庫
 const childhoodEvents = [
@@ -524,10 +765,11 @@ const g = gameState;
 const txt = `【隱藏標籤】
 性別：${trans.gender[g.birth.gender]}
 性取向：${trans.orientation[g.birth.orientation]}
+家庭出身：${trans.origin[g.birth.origin]}
 家庭經濟：${trans.familyWealth[g.birth.familyWealth]}
 出生國家(可見)：${g.birth.birthCountry}
 【隱藏原始國籍】：${g.initialNationality}
-香港分區：${g.birth.district}
+故事分區：${g.birth.district}
 住所類型：${g.birth.residenceType}
 樓宇名稱：${g.birth.residenceName}
 
@@ -573,23 +815,37 @@ function rollNationality(){
   gameState.initialNationality = nation; // 鎖定隱藏初始國籍，永久唔變
 }
 
-// ===== 抽香港18區 + 居所（無論任何國籍都一定抽香港居所） =====
-function rollHKResidence(){
-  const randDistrict = hkDistrictResidenceList[Math.floor(Math.random() * hkDistrictResidenceList.length)];
-  gameState.birth.district = randDistrict.district;
-  const randRes = randDistrict.residences[Math.floor(Math.random() * randDistrict.residences.length)];
+// ===== 【修改】根據故事地區，對應到香港18區，再抽居所 =====
+function rollHKResidence(storyDistrictName){
+  const adminDistrict = storyDistrictToHKAdminDistrict[storyDistrictName];
+  const districtObj = hkDistrictResidenceList.find(item=>item.district === adminDistrict);
+  const randRes = districtObj.residences[Math.floor(Math.random() * districtObj.residences.length)];
   gameState.birth.residenceType = randRes.type;
   gameState.birth.residenceName = randRes.name;
 }
 
-// 隨機抽取先天屬性（重新抽按鈕）
+// 【重寫】隨機抽取先天屬性（改用districtData抽地區、家境、origin）
 function rollBirthAttributes(){
-gameState.birth.gender = genderList[Math.floor(Math.random()*genderList.length)];
-gameState.birth.orientation = orientationList[Math.floor(Math.random()*orientationList.length)];
-gameState.birth.familyWealth = wealthList[Math.floor(Math.random()*wealthList.length)];
-rollNationality();
-rollHKResidence();
-gameState.age = 0;
+  // 1. 抽性別、性取向
+  gameState.birth.gender = genderList[Math.floor(Math.random()*genderList.length)];
+  gameState.birth.orientation = orientationList[Math.floor(Math.random()*orientationList.length)];
+
+  // 2. 抽故事地區
+  const districtList = Object.keys(districtData);
+  const selectedDistrict = districtList[Math.floor(Math.random()*districtList.length)];
+  gameState.birth.district = selectedDistrict;
+  const d = districtData[selectedDistrict];
+
+  // 3. 根據地區概率抽 familyWealth 同 origin
+  gameState.birth.familyWealth = rollByProb(d.wealthProb);
+  gameState.birth.origin = rollByProb(d.originProb);
+
+  //4. 抽國籍
+  rollNationality();
+  //5. 根據故事地區抽對應居所
+  rollHKResidence(selectedDistrict);
+
+  gameState.age = 0;
 }
 
 // ===== 檢查歲數，滿7歲自動將可見國籍改成中國香港，initialNationality唔變 =====
@@ -605,8 +861,12 @@ clearChoices();
 gameState.stage = "start";
 gameState.birthLocked = false;
 rollBirthAttributes();
+const bioText = generateBirthBackground(gameState);
 renderStory(`新的人生即將開始。
-國籍：${gameState.birth.birthCountry}｜出生於香港${gameState.birth.district}，居於${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+${bioText}
+
+居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+國籍：${gameState.birth.birthCountry}
 
 你的出身條件已經隨機生成。
 你可以重新抽一次先天設定，或者直接開始成長旅程。`);
@@ -621,8 +881,12 @@ runAge0Event();
 });
 addChoice("重新抽取先天屬性", ()=>{
 rollBirthAttributes();
+const bioText = generateBirthBackground(gameState);
 renderStory(`已重新隨機抽取出身設定。
-國籍：${gameState.birth.birthCountry}｜出生於香港${gameState.birth.district}，居於${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+${bioText}
+
+居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+國籍：${gameState.birth.birthCountry}
 
 你可以再次重抽，或者直接開始。`);
 refreshTagDisplay();
@@ -630,7 +894,7 @@ refreshTagDisplay();
 refreshTagDisplay();
 }
 
-// ================== 0歲｜嬰兒時期（無選項過場劇，完咗自動去3歲） ==================
+// ================== 0歲｜嬰兒時期（無選項過場劇，改用劇本計時系統） ==================
 function runAge0Event(){
 clearChoices();
 gameState.stage = "age0";
@@ -650,22 +914,22 @@ switch(gameState.birth.familyWealth){
     break;
 }
 
-renderStory(`# 0歲 · 嬰兒時期
-國籍：${gameState.birth.birthCountry}｜出生於香港${gameState.birth.district}，居於${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+const scriptText = `# 0歲 · 嬰兒時期
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}，${gameState.birth.residenceType}「${gameState.birth.residenceName}」
 
 ${wealthDesc}
 你眼中嘅世界淨係得模糊光影，耳邊不停響起父母同親人嘅聲音。
 你仲唔識講說話，亦都唔識行，只可以靠喊、扭動身體同淺淺嘅笑容去表達需要同情緒。
 
 時間慢慢流走，幾個月過去，你漸漸認得照顧你嘅人，聽到熟悉聲音就會安靜落來。
-【歲月推進，來到3歲】`);
-refreshTagDisplay();
-// 延時自動跳去3歲事件
-setTimeout(()=>{
+【歲月推進，來到3歲】`;
+
+showScriptWithTimer(scriptText, ()=>{
   gameState.age = 3;
   checkAgeNationalityChange();
   runAge3Event();
-},2000);
+});
+refreshTagDisplay();
 }
 
 // ================== 3歲｜幼兒時期（第一個可選分支，寫入familyBond旗標） ==================
@@ -707,40 +971,39 @@ refreshTagDisplay();
 
 function nextAge3A(){
 clearChoices();
-renderStory(`你主動撲向父母，拉住佢哋嘅手邀請一齊玩。
+const text = `你主動撲向父母，拉住佢哋嘅手邀請一齊玩。
 父母見到你咁活潑，好開心，願意花好多時間陪伴你，你同屋企建立起非常親密嘅感情。
-【歲月推進，來到6歲，準備入小學】`);
-refreshTagDisplay();
-setTimeout(()=>{
+【歲月推進，來到6歲，準備入小學】`;
+showScriptWithTimer(text, ()=>{
   gameState.age = 6;
   checkAgeNationalityChange();
-  // 日後呢度會接上 runAge6Event()
   runNextChildhoodEvent();
-},2000);
+});
+refreshTagDisplay();
 }
 function nextAge3B(){
 clearChoices();
-renderStory(`你靜靜坐喺隔離睇父母做家務，唔會騷擾佢哋。
+const text = `你靜靜坐喺隔離睇父母做家務，唔會騷擾佢哋。
 父母都覺得你好乖，屋企氣氛平和；但你慢慢習慣唔主動講出自己諗法同感受。
-【歲月推進，來到6歲，準備入小學】`);
-refreshTagDisplay();
-setTimeout(()=>{
+【歲月推進，來到6歲，準備入小學】`;
+showScriptWithTimer(text, ()=>{
   gameState.age = 6;
   checkAgeNationalityChange();
   runNextChildhoodEvent();
-},2000);
+});
+refreshTagDisplay();
 }
 function nextAge3C(){
 clearChoices();
-renderStory(`一旦有陌生人上門，你即刻匿喺父母身後，唔肯出聲。
+const text = `一旦有陌生人上門，你即刻匿喺父母身後，唔肯出聲。
 父母知道你比較膽小，會多啲保護你；但面對外人，你會本能地存有戒心。
-【歲月推進，來到6歲，準備入小學】`);
-refreshTagDisplay();
-setTimeout(()=>{
+【歲月推進，來到6歲，準備入小學】`;
+showScriptWithTimer(text, ()=>{
   gameState.age = 6;
   checkAgeNationalityChange();
   runNextChildhoodEvent();
-},2000);
+});
+refreshTagDisplay();
 }
 
 // 執行童年微型事件（6歲開始嘅童年事件庫）
@@ -775,9 +1038,12 @@ finalAge15Choices.forEach(opt=>{
 addChoice(opt.text, async ()=>{
 opt.effect();
 await gameStorage.save(gameState);
-renderStory("你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。\n【這裡之後可以寫跳轉到Stage2劇本】");
+// 改用劇本計時顯示結局文字
 clearChoices();
-refreshTagDisplay();
+const endText = "你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。\n【這裡之後可以寫跳轉到Stage2劇本】";
+showScriptWithTimer(endText, ()=>{
+  refreshTagDisplay();
+});
 })
 })
 refreshTagDisplay();
