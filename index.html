@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box;font-family:system-ui, sans-serif;margin:0;padding:0}
 
-/* 全局背景圖設置（已修正為 Hk1.jpg） */
+/* 全局背景圖設置 */
 body{
   background:#111 url('Hk1.jpg') no-repeat center center fixed;
   background-size:cover;
@@ -51,48 +51,71 @@ body{
   transition: opacity 1.5s ease-in-out;
 }
 
-/* 封面暗色遮罩 */
+/* 封面暗色放射狀遮罩：讓背景柔和退後，凸顯中央文字 */
 #titleCover::before {
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: radial-gradient(circle, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.85) 100%);
   z-index: -1;
 }
 
-/* 粗體發光遊戲標題特效 */
-#gameTitle{
-  font-size:42px;
-  font-weight:900;
-  color:#ffc107;
-  text-shadow: 0 0 20px rgba(255, 193, 7, 0.8), 0 4px 10px rgba(0,0,0,0.9);
-  letter-spacing: 4px;
-  opacity:0;
-  transform: scale(0.9);
-  transition: opacity 1.2s ease, transform 1.2s ease;
+/* 標題外包裝群組 */
+.title-group {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
+  padding: 0 20px;
 }
 
-/* 開始遊戲按鈕特效 */
+/* 粗體發光遊戲標題（採用暖金漸變與層次陰影） */
+#gameTitle{
+  font-size: 44px;
+  font-weight: 900;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "Microsoft JhengHei", sans-serif;
+  background: linear-gradient(180deg, #ffe082 0%, #ffb300 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 20px rgba(255, 179, 0, 0.4));
+  letter-spacing: 8px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 1.2s ease, transform 1.2s ease;
+}
+
+/* 遊戲故事副標題 */
+#gameSubTitle{
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 3px;
+  margin-top: 12px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 1.2s ease 0.4s, transform 1.2s ease 0.4s;
+}
+
+/* 開始遊戲按鈕：質感金屬膠囊風格 */
 #startGameBtn{
-  padding:16px 40px;
-  font-size:20px;
-  font-weight:bold;
-  background:linear-gradient(135deg, #ffc107, #ff8c00);
-  color:#111;
-  border:none;
-  border-radius:30px;
-  cursor:pointer;
-  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.5);
-  opacity:0;
+  padding: 14px 44px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, #ffc107, #ff8c00);
+  color: #1a1a1a;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(255, 140, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.6);
+  opacity: 0;
   transform: translateY(20px);
-  transition: opacity 1s ease, transform 1s ease, background 0.3s;
-  display:none;
+  transition: opacity 1s ease, transform 1s ease, background 0.3s, box-shadow 0.3s;
+  display: none;
 }
 #startGameBtn:hover{
-  background:linear-gradient(135deg, #ffca28, #ffa000);
-  transform: translateY(18px) scale(1.05);
+  background: linear-gradient(135deg, #ffca28, #ffa000);
+  box-shadow: 0 8px 30px rgba(255, 140, 0, 0.6), inset 0 1px 1px rgba(255,255,255,0.8);
+  transform: translateY(18px) scale(1.03);
 }
 
 /* ===== 設定按鈕 (右上角) ===== */
@@ -230,7 +253,10 @@ white-space:pre-wrap;
 
 <!-- 開場動畫與封面層 -->
 <div id="titleCover">
-  <div id="gameTitle">香港人生之旅</div>
+  <div class="title-group">
+    <div id="gameTitle">香港人生之旅</div>
+    <div id="gameSubTitle">每一個抉擇，都是一段獨一無二的城中故事</div>
+  </div>
   <button id="startGameBtn" onclick="enterGameFromTitle()">開始遊戲</button>
 </div>
 
@@ -459,7 +485,7 @@ const trans = {
     childhoodEvent:"童年事件階段", age15Choice:"15歲抉擇階段"
   },
   origin:{
-    localHK:"香港本地土生家庭", uk:"英國背景回流家庭", sg:"新加坡背景家庭",
+    localHK:"香港本地土生家庭", uk:"英國背景回回流家庭", sg:"新加坡背景家庭",
     cnMainland:"內地新移民家庭", southAsia:"南亞裔家庭", others:"其他海外背景家庭"
   }
 };
@@ -535,18 +561,23 @@ const $$ = s=>document.querySelectorAll(s);
 function playTitleIntroAnimation(){
   const titleCover = $("#titleCover");
   const gameTitle = $("#gameTitle");
+  const gameSubTitle = $("#gameSubTitle");
   const startBtn = $("#startGameBtn");
 
-  // 1. 圖片背景淡入 (1.5秒)
+  // 1. 圖片背景淡入
   setTimeout(()=>{
     titleCover.style.opacity = "1";
   }, 100);
 
-  // 2. 遊戲標題淡入並微微放大
+  // 2. 標題與副標題淡入並滑入
   setTimeout(()=>{
     gameTitle.style.opacity = "1";
-    gameTitle.style.transform = "scale(1)";
-  }, 1200);
+    gameTitle.style.transform = "translateY(0)";
+    if(gameSubTitle){
+      gameSubTitle.style.opacity = "1";
+      gameSubTitle.style.transform = "translateY(0)";
+    }
+  }, 1000);
 
   // 3. 彈出「開始遊戲」按鈕
   setTimeout(()=>{
@@ -555,7 +586,7 @@ function playTitleIntroAnimation(){
       startBtn.style.opacity = "1";
       startBtn.style.transform = "translateY(0)";
     }, 50);
-  }, 2600);
+  }, 2200);
 }
 
 // 點擊「開始遊戲」後過渡至遊戲主介面
@@ -569,7 +600,7 @@ function enterGameFromTitle(){
     container.style.display = "flex";
     setTimeout(()=>{
       container.style.opacity = "1";
-      loadGame(); // 載入遊戲進度或顯示創角畫面
+      loadGame(); 
     }, 50);
   }, 1000);
 }
@@ -957,7 +988,7 @@ function runPrologue(){
 
 一聲響亮嘅喊聲，劃破產房寂靜。
 
-媽媽溫柔嘅喘息、爸爸激動顫抖嘅雙手,將你緊緊托起。
+媽媽溫柔嘅喘息、爸爸激動顫抖嘅雙手，將你緊緊托起。
 
 呢個世界，我嚟喇。`;
 
@@ -1217,7 +1248,7 @@ ${wealthDesc}
   playSequentialStory(storyText, ()=>{
     clearChoices();
     $("#story").innerText = "請選擇父母面對你嘗試自理、學習分類物件嘅回應：";
-    addChoice("A｜父母唔任由你自己嘗試用羹食飯、玩形狀配對，整污糟唔阻止", async ()=>{
+    addChoice("A｜父母任由你自己嘗試用羹食飯、玩形狀配對，整污糟唔阻止", async ()=>{
       updateOcean({ openness: +4, conscientiousness: +2 });
       gameState.stage = "age2_spring"; gameState.age = 2;
       await gameStorage.save(gameState);
