@@ -26,9 +26,9 @@ body{
 /* 遊戲內主容器保持完全透明 */
 #container{
   background: transparent;
-  padding: 24px;
+  padding: 12px;
   border-radius: 12px;
-  min-height: 400px;
+  height: calc(100vh - 24px);
   display: none; /* 開局預設隱藏，待點擊開始遊戲後淡入 */
   flex-direction: column;
   justify-content: space-between;
@@ -71,7 +71,7 @@ body{
 
 /* 上方大標題「香港」：藍紅雙色霓虹燈設計 */
 #gameTitle{
-  font-size: 100px;
+  font-size: 80px;
   font-weight: 900;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "Microsoft JhengHei", sans-serif;
   color: #fff;
@@ -197,16 +197,14 @@ body{
   background: linear-gradient(135deg, rgba(16, 37, 66, 0.95) 0%, rgba(10, 22, 40, 0.95) 100%);
   border: 2px solid #05d9e8;
   border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 16px;
+  padding: 10px;
   text-align: center;
-  margin-top: 20px;
   box-shadow: 0 0 15px rgba(5, 217, 232, 0.25), inset 0 0 10px rgba(5, 217, 232, 0.15);
 }
 #ocean-radar-box h3{
-  font-size: 15px;
+  font-size: 14px;
   color: #05d9e8;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   text-shadow: 0 0 6px rgba(5, 217, 232, 0.5);
 }
 #oceanCanvas{
@@ -215,22 +213,23 @@ body{
   max-width: 100%;
 }
 
-/* 劇本文字區塊：改為半透明小黑框背景 + 陰影，確保文字清晰易讀 */
+/* 劇本文字區塊：動態適應與內部滾動 */
 #story{
-  max-height: 200px;
-  overflow-y: auto;
-  margin: 20px 0 24px 0;
+  margin: 12px 0;
   font-size: 18px;
-  min-height: 90px;
+  flex-grow: 1;
+  min-height: 80px;
+  max-height: 45vh;
+  overflow-y: auto;
   display: flex;
   align-items: flex-start;
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.75); /* 半透明黑色小黑框背景 */
-  border: 1px solid rgba(255, 255, 255, 0.15); /* 淡淡的邊框 */
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
   padding: 18px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8); /* 陰影效果 */
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9); /* 文字陰影 */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
   transition: opacity 0.3s ease;
   white-space: pre-wrap;
 }
@@ -318,7 +317,7 @@ white-space:pre-wrap;
   <!-- 大五人格五角形雷達圖（科技面板邊框風格） -->
   <div id="ocean-radar-box">
     <h3>🧠 心理狀態｜大五人格 (OCEAN)</h3>
-    <canvas id="oceanCanvas" width="300" height="260"></canvas>
+    <canvas id="oceanCanvas" width="300" height="230"></canvas>
   </div>
 
   <div id="story"></div>
@@ -1075,7 +1074,7 @@ ${wealthDesc}
       await gameStorage.save(gameState);
       runAge2Autumn();
     });
-    addChoice("B｜父母參與角色扮演陪餵公仔；妒忌時短暫溫柔解釋平衡注意力", async ()=>{
+    addChoice("B｜父母參與角色扮演陪餵公；妒忌時短暫溫柔解釋平衡注意力", async ()=>{
       updateOcean({ agreeableness: +4, openness: +3 });
       gameState.stage = "age2_autumn";
       await gameStorage.save(gameState);
@@ -1382,7 +1381,7 @@ const districtData = {
   "半山區": {
     wealthProb: {rich:0.70, middle:0.28, poor:0.02},
     originProb: {localHK:0.35, uk:0.25, sg:0.15, cnMainland:0.20, others:0.05},
-    desc: "豪宅集中地，多為跨國企業高層、舊家族；少量為繼承舊大屋但現金拮据嘅家庭"
+    desc: "豪宅集中地，多為跨國企業高層、舊家族；少量為繼承舊大屋但現金拮據嘅家庭"
   },
   "西貢": {
     wealthProb: {rich:0.40, middle:0.50, poor:0.10},
@@ -1573,7 +1572,7 @@ function drawOceanRadar(){
   const width = canvas.width;
   const height = canvas.height;
   const centerX = width / 2;
-  const centerY = height / 2 + 10;
+  const centerY = height / 2 + 5;
   const radius = 70;
 
   ctx.fillStyle = "#ffffff";
@@ -1607,7 +1606,7 @@ function drawOceanRadar(){
   }
 
   ctx.fillStyle = "#333333";
-  ctx.font = "402 16.06px system-ui"; // ← 就是這一行改動！
+  ctx.font = "14px system-ui";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
