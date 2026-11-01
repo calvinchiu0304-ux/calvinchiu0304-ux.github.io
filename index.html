@@ -213,7 +213,21 @@ body{
   max-width: 100%;
 }
 
-#story{margin-bottom:24px;font-size:18px;min-height:120px;display:flex;align-items:center;transition: opacity 0.3s ease;}
+/* 移除劇本文字的黑色框，改為乾淨無邊框、自然融入容器背景 */
+#story{
+  margin: 20px 0 24px 0;
+  font-size: 18px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  transition: opacity 0.3s ease;
+  white-space: pre-wrap;
+}
+
 .choice-btn{display:block;width:100%;padding:14px;margin:10px 0;background:#333;color:#fff;border:1px solid #555;border-radius:8px;text-align:left;cursor:pointer;font-size:16px}
 .choice-btn:hover{background:#444;}
 #log{margin-top:20px;color:#aaa;font-size:14px;display:none;}
