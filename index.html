@@ -288,6 +288,7 @@ const trans = {
   finance: {low:"低", medium:"中等", high:"高"},
   stage: {
     start:"開局｜抽先天屬性",
+    prologue:"序章",
     age0_spring:"0歲春季", age0_summer:"0歲夏季", age0_autumn:"0歲秋季", age0_winter:"0歲冬季",
     age1_spring:"1歲春季", age1_summer:"1歲夏季", age1_autumn:"1歲秋季", age1_winter:"1歲冬季",
     age2_spring:"2歲春季", age2_summer:"2歲夏季", age2_autumn:"2歲秋季", age2_winter:"2歲冬季",
@@ -343,6 +344,7 @@ const storyDistrictToHKAdminDistrict = {
 
 const jumpList = [
   {name:"開局｜抽先天屬性", fn:()=>showStartScreen()},
+  {name:"序章", fn:()=>runPrologue()},
   {name:"0歲·春", fn:()=>runAge0Spring()},
   {name:"0歲·夏", fn:()=>runAge0Summer()},
   {name:"0歲·秋", fn:()=>runAge0Autumn()},
@@ -398,11 +400,10 @@ function initOceanAttributes(){
   const g = gameState;
   let baseAgeVal = 0;
   
-  // 1. 按創角年齡段設定基礎分數
-  if(g.age === 0) baseAgeVal = 0; // 嬰兒期從 0 開始
+  if(g.age === 0) baseAgeVal = 0;
   else if(g.age <= 15) baseAgeVal = 35;
   else if(g.age <= 30) baseAgeVal = 55;
-  else baseAgeVal = 70; // 晚年/中年期基礎固定在 70 上下
+  else baseAgeVal = 70;
 
   g.ocean = {
     openness: baseAgeVal,
@@ -412,29 +413,24 @@ function initOceanAttributes(){
     neuroticism: baseAgeVal
   };
 
-  // 2. 按居住地區與家境進行環境修正
   const district = g.birth.district;
   const wealth = g.birth.familyWealth;
   const origin = g.birth.origin;
 
-  // 神經質 (Neuroticism) 修正
   if(wealth === "poor" || district === "深水埗" || district === "元朗舊墟"){
-    g.ocean.neuroticism += 12; // 貧窮或舊區生存壓力大，敏感度高
+    g.ocean.neuroticism += 12;
   } else if(district === "半山區" && wealth === "rich"){
-    g.ocean.neuroticism += 8;  // 高壓豪宅環境
+    g.ocean.neuroticism += 8;
   }
 
-  // 開放性 (Openness) 修正
   if(district === "灣仔" || district === "九龍塘" || district === "半山區" || origin === "uk" || origin === "sg"){
-    g.ocean.openness += 12; // 國際化環境與留學背景
+    g.ocean.openness += 12;
   }
 
-  // 宜人性 (Agreeableness) 修正
   if(district === "深水埗" || district === "觀塘"){
-    g.ocean.agreeableness += 6; // 舊區街坊網絡緊密
+    g.ocean.agreeableness += 6;
   }
 
-  // 確保數值在 0-100 範圍
   for(let k in g.ocean){
     g.ocean[k] = Math.max(0, Math.min(100, g.ocean[k]));
   }
@@ -466,7 +462,6 @@ function drawOceanRadar(){
   const total = labels.length;
   const angleStep = (Math.PI * 2) / total;
 
-  // 1. 繪製背景網格五角形 (20%, 40%, 60%, 80%, 100%)
   ctx.strokeStyle = "#444";
   ctx.lineWidth = 1;
   for(let level = 1; level <= 5; level++){
@@ -483,7 +478,6 @@ function drawOceanRadar(){
     ctx.stroke();
   }
 
-  // 2. 繪製軸線與標籤
   ctx.fillStyle = "#bbb";
   ctx.font = "12px system-ui";
   ctx.textAlign = "center";
@@ -500,14 +494,12 @@ function drawOceanRadar(){
     ctx.strokeStyle = "#333";
     ctx.stroke();
 
-    // 標籤文字位置（稍微往外延伸）
     const labelX = centerX + (radius + 24) * Math.cos(angle);
     const labelY = centerY + (radius + 18) * Math.sin(angle);
     const val = gameState.ocean[labels[i].key] || 0;
     ctx.fillText(`${labels[i].name}:${Math.round(val)}`, labelX, labelY);
   }
 
-  // 3. 繪製玩家當前 OCEAN 數據多邊形
   ctx.beginPath();
   for(let i = 0; i < total; i++){
     const angle = i * angleStep - Math.PI / 2;
@@ -519,7 +511,7 @@ function drawOceanRadar(){
     else ctx.lineTo(x, y);
   }
   ctx.closePath();
-  ctx.fillStyle = "rgba(255, 193, 7, 0.35)"; // 半透明金黃色
+  ctx.fillStyle = "rgba(255, 193, 7, 0.35)";
   ctx.fill();
   ctx.strokeStyle = "#ffc107";
   ctx.lineWidth = 2;
@@ -650,7 +642,6 @@ function rollBirthAttributes(){
   rollHKResidence(selectedDistrict);
   gameState.age = 0;
   
-  // 計算大五人格初始值
   initOceanAttributes();
 }
 
@@ -679,18 +670,49 @@ function showStartScreen(){
   
   $("#story").innerText = `新的人生即將開始。\n${bioText}\n\n居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」\n國籍：${gameState.birth.birthCountry}\n\n你的出身條件已經隨機生成。`;
 
+  // 點擊後改為進入「序章」
   addChoice("開始新一局", async ()=>{
     gameState.birthLocked = true;
     gameState.age = 0;
     gameState.eventIndex = 0;
-    gameState.stage = "age0_spring";
+    gameState.stage = "prologue";
     await gameStorage.save(gameState);
-    runAge0Spring();
+    runPrologue();
   });
   addChoice("重新抽取先天屬性", ()=>{
     showStartScreen();
   });
   refreshTagDisplay();
+}
+
+// ===================== 【新增：序章執行函數】 =====================
+function runPrologue(){
+  gameState.stage = "prologue";
+  gameState.age = 0;
+  
+  const prologueText = `序章：你第一聲的啼哭
+
+你在溫暖而黑暗的羊水當中，被一束刺眼嘅白光無情劃破。
+
+冰冷嘅空氣湧入，背脊傳來別人的輕輕一拍。
+
+「啪！」
+
+胸腔擴張，你本能地張開口——
+
+「哇——！」
+
+一聲響亮嘅喊聲，劃破產房寂靜。
+
+媽媽溫柔嘅喘息、爸爸激動顫抖嘅雙手，將你緊緊托起。
+
+呢個世界，我嚟喇。`;
+
+  playSequentialStory(prologueText, async ()=>{
+    gameState.stage = "age0_spring";
+    await gameStorage.save(gameState);
+    runAge0Spring();
+  }, true);
 }
 
 // ================== 0至3歲四季劇情鏈 (結合 OCEAN 動態變更) ==================
@@ -1250,24 +1272,6 @@ function runNextChildhoodEvent(){
   clearChoices();
   gameState.stage = "childhoodEvent";
   let idx = gameState.eventIndex;
-  if(idx >= [
-    { text:"小學時班裡組織課外活動……", choices:[
-      {text:"參加活動一齊玩", delta:{extraversion:+8, agreeableness:+4}},
-      {text:"婉拒邀請獨自睇書", delta:{openness:+6, extraversion:-5}}
-    ]},
-    { text:"屋企遇到小困難父母商量……", choices:[
-      {text:"嘗試體諒主動幫手", delta:{agreeableness:+8, conscientiousness:+4}},
-      {text:"唔想介入返房", delta:{neuroticism:+4, extraversion:-3}}
-    ]},
-    { text:"考試成績唔理想思考時間分配……", choices:[
-      {text:"調整時間專心溫習", delta:{conscientiousness:+8, neuroticism:-3}},
-      {text:"覺得分數不代表一切做鍾意嘅事", delta:{openness:+6, conscientiousness:-4}}
-    ]}
-  ].length){
-    showAge15FinalChoices();
-    return;
-  }
-  
   let childhoodList = [
     { text:"小學時班裡組織課外活動，同學邀請你一齊參加。", choices:[
       {text:"參加活動，同大家一齊玩", delta:{extraversion:+8, agreeableness:+4}},
@@ -1282,6 +1286,11 @@ function runNextChildhoodEvent(){
       {text:"覺得分數唔係一切，繼續做自己鍾意嘅事", delta:{openness:+6, conscientiousness:-4}}
     ]}
   ];
+
+  if(idx >= childhoodList.length){
+    showAge15FinalChoices();
+    return;
+  }
 
   let evt = childhoodList[idx];
   
@@ -1344,6 +1353,7 @@ async function loadGame(){
   
   switch(gameState.stage){
     case "start": showStartScreen(); break;
+    case "prologue": runPrologue(); break;
     case "age0_spring": runAge0Spring(); break;
     case "age0_summer": runAge0Summer(); break;
     case "age0_autumn": runAge0Autumn(); break;
