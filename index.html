@@ -36,11 +36,11 @@ body{
   transition: opacity 1s ease;
 }
 
-/* ===== 開場封面 / 遊戲標題動畫層 ===== */
+/* ===== 開場封面 / 遊戲霓虹燈效層 ===== */
 #titleCover{
   position:fixed;
   top:0; left:0; width:100vw; height:100vh;
-  background:#111 url('Hk1.jpg') no-repeat center center;
+  background:#0b0f19 url('Hk1.jpg') no-repeat center center;
   background-size:cover;
   z-index:2000;
   display:flex;
@@ -51,12 +51,12 @@ body{
   transition: opacity 1.5s ease-in-out;
 }
 
-/* 封面暗色放射狀遮罩：讓背景柔和退後，凸顯中央文字 */
+/* 封面暗色深藍色調遮罩，營造夜間霓虹氛圍 */
 #titleCover::before {
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.85) 100%);
+  background: radial-gradient(circle, rgba(11,15,25,0.7) 0%, rgba(5,8,15,0.92) 100%);
   z-index: -1;
 }
 
@@ -67,55 +67,71 @@ body{
   padding: 0 20px;
 }
 
-/* 粗體發光遊戲標題（採用暖金漸變與層次陰影） */
+/* 上方大標題「香港」：藍紅雙色霓虹燈設計（外框電光藍、內層桃紅發光）[span_2](start_span)[span_2](end_span) */
 #gameTitle{
-  font-size: 44px;
+  font-size: 80px;
   font-weight: 900;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang HK", "Microsoft JhengHei", sans-serif;
-  background: linear-gradient(180deg, #ffe082 0%, #ffb300 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 20px rgba(255, 179, 0, 0.4));
-  letter-spacing: 8px;
+  color: #fff;
+  text-shadow: 
+    0 0 5px #ff2a6d, 
+    0 0 15px #ff2a6d, 
+    0 0 30px #05d9e8, 
+    0 0 60px #05d9e8,
+    0 0 100px #05d9e8;
+  letter-spacing: 16px;
   opacity: 0;
-  transform: translateY(-10px);
+  transform: scale(0.85);
   transition: opacity 1.2s ease, transform 1.2s ease;
+  margin-left: 16px;
 }
 
-/* 遊戲故事副標題 */
+/* 下方副標題「--你的人生之旅--」：藍色霓虹光暈 */
 #gameSubTitle{
-  font-size: 15px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.85);
-  letter-spacing: 3px;
-  margin-top: 12px;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+  font-size: 18px;
+  font-weight: 600;
+  color: #e0fbfc;
+  letter-spacing: 6px;
+  margin-top: 18px;
+  text-shadow: 0 0 6px #05d9e8, 0 0 15px #05d9e8, 0 2px 5px rgba(0,0,0,0.9);
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 1.2s ease 0.4s, transform 1.2s ease 0.4s;
 }
 
-/* 開始遊戲按鈕：質感金屬膠囊風格 */
+/* 最下方閃爍的霓虹文字框與「開始遊戲」按鈕[span_3](start_span)[span_3](end_span) */
+@keyframes neonPulse {
+  0%, 100% {
+    border-color: #05d9e8;
+    box-shadow: 0 0 10px #05d9e8, inset 0 0 10px #05d9e8, 0 0 30px rgba(5,217,232,0.4);
+  }
+  50% {
+    border-color: #ff2a6d;
+    box-shadow: 0 0 20px #ff2a6d, inset 0 0 15px #ff2a6d, 0 0 50px rgba(255,42,109,0.7);
+  }
+}
+
 #startGameBtn{
-  padding: 14px 44px;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  background: linear-gradient(135deg, #ffc107, #ff8c00);
-  color: #1a1a1a;
-  border: none;
-  border-radius: 50px;
+  padding: 16px 50px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  background: rgba(11, 15, 25, 0.85);
+  color: #fff;
+  border: 3px solid #05d9e8;
+  border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 6px 24px rgba(255, 140, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.6);
+  /* 結合閃爍呼吸燈特效 */
+  animation: neonPulse 2.5s infinite ease-in-out;
+  text-shadow: 0 0 8px #05d9e8, 0 0 15px #ff2a6d;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 1s ease, transform 1s ease, background 0.3s, box-shadow 0.3s;
+  transition: opacity 1s ease, transform 1s ease, background 0.3s;
   display: none;
 }
 #startGameBtn:hover{
-  background: linear-gradient(135deg, #ffca28, #ffa000);
-  box-shadow: 0 8px 30px rgba(255, 140, 0, 0.6), inset 0 1px 1px rgba(255,255,255,0.8);
-  transform: translateY(18px) scale(1.03);
+  background: rgba(5, 217, 232, 0.15);
+  transform: translateY(18px) scale(1.05);
 }
 
 /* ===== 設定按鈕 (右上角) ===== */
@@ -251,11 +267,11 @@ white-space:pre-wrap;
 </head>
 <body>
 
-<!-- 開場動畫與封面層 -->
+<!-- 霓虹燈風格開場封面與動畫層 -->
 <div id="titleCover">
   <div class="title-group">
-    <div id="gameTitle">香港人生之旅</div>
-    <div id="gameSubTitle">每一個抉擇，都是一段獨一無二的城中故事</div>
+    <div id="gameTitle">香港</div>
+    <div id="gameSubTitle">--你的人生之旅--</div>
   </div>
   <button id="startGameBtn" onclick="enterGameFromTitle()">開始遊戲</button>
 </div>
@@ -485,7 +501,7 @@ const trans = {
     childhoodEvent:"童年事件階段", age15Choice:"15歲抉擇階段"
   },
   origin:{
-    localHK:"香港本地土生家庭", uk:"英國背景回回流家庭", sg:"新加坡背景家庭",
+    localHK:"香港本地土生家庭", uk:"英國背景回流家庭", sg:"新加坡背景家庭",
     cnMainland:"內地新移民家庭", southAsia:"南亞裔家庭", others:"其他海外背景家庭"
   }
 };
@@ -569,10 +585,10 @@ function playTitleIntroAnimation(){
     titleCover.style.opacity = "1";
   }, 100);
 
-  // 2. 標題與副標題淡入並滑入
+  // 2. 標題與副標題淡入並縮放
   setTimeout(()=>{
     gameTitle.style.opacity = "1";
-    gameTitle.style.transform = "translateY(0)";
+    gameTitle.style.transform = "scale(1)";
     if(gameSubTitle){
       gameSubTitle.style.opacity = "1";
       gameSubTitle.style.transform = "translateY(0)";
