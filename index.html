@@ -23,7 +23,7 @@ body{
   min-height:100vh;
 }
 
-/* 遊戲內容器改為完全透明，讓背景夜景完整透出 */
+/* 遊戲內主容器保持完全透明 */
 #container{
   background: transparent;
   padding: 24px;
@@ -215,17 +215,20 @@ body{
   max-width: 100%;
 }
 
-/* 劇本文字區塊背景完全透明 */
+/* 劇本文字區塊：改為半透明小黑框背景 + 陰影，確保文字清晰易讀 */
 #story{
   margin: 20px 0 24px 0;
   font-size: 18px;
   min-height: 120px;
   display: flex;
-  align-items: center;
-  background: transparent;
-  border: none;
-  padding: 0;
-  box-shadow: none;
+  align-items: flex-start;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.75); /* 半透明黑色小黑框背景 */
+  border: 1px solid rgba(255, 255, 255, 0.15); /* 淡淡的邊框 */
+  border-radius: 10px;
+  padding: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8); /* 陰影效果 */
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9); /* 文字陰影 */
   transition: opacity 0.3s ease;
   white-space: pre-wrap;
 }
@@ -284,7 +287,7 @@ white-space:pre-wrap;
 </head>
 <body>
 <!-- ==============================================
-【3. UI 介面】HTML DOM 頁面結構：所有頁面元素、按鈕、面板、彈窗
+【3. UI 介面】HTML DOM 頁面結構：所有頁面元素、按鈕, 面板、彈窗
 ============================================== -->
 
 <!-- 霓虹燈風格開場封面與動畫層 -->
@@ -730,7 +733,7 @@ function runPrologue(){
 
 胸腔擴張，你本能地張開口——
 
-「哇——！」
+“哇——！”
 
 一聲響亮嘅喊聲，劃破產房寂靜。
 
@@ -738,11 +741,11 @@ function runPrologue(){
 
 呢個世界，我嚟喇。`;
 
-  playSequentialStory(prologueText, async ()=>{
+  playPrologueStory(prologueText, async ()=>{
     gameState.stage = "age0_spring";
     await gameStorage.save(gameState);
     runAge0Spring();
-  }, true);
+  });
 }
 
 function runAge0Spring(){
@@ -1639,6 +1642,58 @@ function drawOceanRadar(){
   ctx.strokeStyle = "#2196F3";
   ctx.lineWidth = 2;
   ctx.stroke();
+}
+
+// 專門用於序章的播放函式：逐句打字並在畫面中累積顯示，最後整篇呈現
+function playPrologueStory(fullText, onComplete){
+  clearTimeouts();
+  clearChoices();
+
+  const storyEl = $("#story");
+  storyEl.innerText = "";
+  storyEl.style.opacity = 1;
+
+  // 略過按鈕
+  const skipBtn = document.createElement("button");
+  skipBtn.className = "skip-btn";
+  skipBtn.innerText = "⏭️ 跳過序章";
+  skipBtn.onclick = function(e){
+    e.stopPropagation();
+    clearTimeouts();
+    storyEl.innerText = fullText;
+    if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
+    currentTimeout = setTimeout(onComplete, 1500);
+  }
+  $("#choices").appendChild(skipBtn);
+
+  let charIdx = 0;
+  
+  if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
+  skipStoryHandler = function(e){
+    if(e.target.closest('button') || e.target.closest('#settingsModal') || e.target.closest('#adminOverlay')) return;
+    
+    clearInterval(currentInterval);
+    clearTimeout(currentTimeout);
+    document.removeEventListener("click", skipStoryHandler);
+    storyEl.innerText = fullText;
+    currentTimeout = setTimeout(onComplete, 1500);
+  };
+  document.addEventListener("click", skipStoryHandler);
+
+  currentInterval = setInterval(()=>{
+    if(charIdx < fullText.length){
+      storyEl.innerText += fullText.charAt(charIdx);
+      charIdx++;
+    }else{
+      clearInterval(currentInterval);
+      if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
+      currentTimeout = setTimeout(()=>{
+        onComplete();
+      }, 2500);
+    }
+  }, 40);
+
+  refreshTagDisplay();
 }
 
 function playSequentialStory(fullText, onComplete, showSkipBtn = true){
