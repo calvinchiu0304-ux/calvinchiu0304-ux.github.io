@@ -40,7 +40,7 @@ body{
 #titleCover{
   position:fixed;
   top:0; left:0; width:100vw; height:100vh;
-  background:#0b0f19 url('Hk1.jpg') no-repeat center center;
+  background:#0b0f19 url('Hk2.jpg') no-repeat center center;
   background-size:cover;
   z-index:2000;
   display:flex;
@@ -110,3 +110,1638 @@ body{
     box-shadow: 0 0 20px #ff2a6d, inset 0 0 15px #ff2a6d, 0 0 50px rgba(255,42,109,0.7);
   }
 }
+
+#startGameBtn{
+  padding: 16px 50px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  background: rgba(11, 15, 25, 0.85);
+  color: #fff;
+  border: 3px solid #05d9e8;
+  border-radius: 12px;
+  cursor: pointer;
+  /* 結合閃爍呼吸燈特效 */
+  animation: neonPulse 2.5s infinite ease-in-out;
+  text-shadow: 0 0 8px #05d9e8, 0 0 15px #ff2a6d;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 1s ease, transform 1s ease, background 0.3s;
+  display: none;
+}
+#startGameBtn:hover{
+  background: rgba(5, 217, 232, 0.15);
+  transform: translateY(18px) scale(1.05);
+}
+
+/* ===== 設定按鈕 (右上角) ===== */
+#openSettingsBtn{
+  position:absolute;
+  top:20px;
+  right:20px;
+  background:rgba(51, 51, 51, 0.8);
+  color:#fff;
+  border:1px solid #555;
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:14px;
+  z-index:10;
+}
+#openSettingsBtn:hover{background:#444;}
+
+/* ===== 設定彈窗 (Modal) ===== */
+#settingsModal{
+  display:none;
+  position:fixed;
+  top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.85);
+  z-index:3000;
+  justify-content:center;
+  align-items:center;
+}
+.modal-content{
+  background:#222;
+  border:1px solid #555;
+  padding:28px;
+  border-radius:12px;
+  width:90%;
+  max-width:360px;
+  text-align:center;
+}
+.modal-content h3{margin-bottom:16px;color:#ffc107;font-size:18px;}
+.settings-btn{
+  display:block;
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  background:#333;
+  color:#fff;
+  border:1px solid #555;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:16px;
+}
+.settings-btn:hover{background:#444;}
+#shareToast{
+  margin-top:12px;
+  color:#ffc107;
+  font-size:13px;
+  line-height:1.4;
+  display:none;
+}
+
+/* ===== 五角形雷達圖容器 ===== */
+#ocean-radar-box{
+  background:#1a1a1a;
+  border:1px solid #444;
+  border-radius:10px;
+  padding:12px;
+  margin-bottom:16px;
+  text-align:center;
+  margin-top:20px;
+}
+#ocean-radar-box h3{
+  font-size:15px;
+  color:#ffc107;
+  margin-bottom:8px;
+}
+#oceanCanvas{
+  background:#111;
+  border-radius:8px;
+  max-width:100%;
+}
+
+#story{margin-bottom:24px;font-size:18px;min-height:120px;display:flex;align-items:center;transition: opacity 0.3s ease;}
+.choice-btn{display:block;width:100%;padding:14px;margin:10px 0;background:#333;color:#fff;border:1px solid #555;border-radius:8px;text-align:left;cursor:pointer;font-size:16px}
+.choice-btn:hover{background:#444;}
+#log{margin-top:20px;color:#aaa;font-size:14px;display:none;}
+
+.skip-btn{
+  display:block;
+  width:100%;
+  padding:12px;
+  margin:12px 0 0;
+  background:#2b4470;
+  color:#fff;
+  border:1px solid #5782c2;
+  border-radius:8px;
+  text-align:center;
+  cursor:pointer;
+  font-size:16px;
+}
+.skip-btn:hover{background:#365892;}
+
+/* ===== 管理員浮動UI ===== */
+#adminOverlay{
+display:none;
+position:fixed;
+top:10px;
+right:10px;
+z-index:2999;
+background:#1a1a1a;
+border:1px solid #ffc107;
+padding:12px;
+border-radius:10px;
+max-width:280px;
+}
+#adminOverlay h4{margin:0 0 8px;color:#ffc107;font-size:15px}
+.admin-over-btn{
+display:block;
+width:100%;
+padding:6px 8px;
+margin:4px 0;
+background:#3a3a22;
+color:#ffe;
+border:1px solid #777;
+border-radius:6px;
+cursor:pointer;
+}
+#tagInfo{
+margin-top:8px;
+font-size:12px;
+color:#bbb;
+white-space:pre-wrap;
+}
+</style>
+</head>
+<body>
+
+<!-- 霓虹燈風格開場封面與動畫層 -->
+<div id="titleCover">
+  <div class="title-group">
+    <div id="gameTitle">香港</div>
+    <div id="gameSubTitle">--你的人生之旅--</div>
+  </div>
+  <button id="startGameBtn" onclick="enterGameFromTitle()">開始遊戲</button>
+</div>
+
+<!-- 頂部設定按鈕 -->
+<button id="openSettingsBtn" onclick="openSettings()">⚙️ 設定</button>
+
+<!-- 設定彈窗 -->
+<div id="settingsModal">
+  <div class="modal-content">
+    <h3>⚙️ 遊戲設定</h3>
+    <button class="settings-btn" onclick="shareGameLink()">🔗 分享遊戲</button>
+    <div id="shareToast">已複製遊戲連結，可以和任何朋友在社交程式上按"貼上"分享遊戲</div>
+    <button class="settings-btn" onclick="closeSettings()">關閉設定</button>
+  </div>
+</div>
+
+<div id="container">
+  <!-- 大五人格五角形雷達圖（所有玩家皆可見） -->
+  <div id="ocean-radar-box">
+    <h3>🧠 心理狀態｜大五人格 (OCEAN)</h3>
+    <canvas id="oceanCanvas" width="300" height="260"></canvas>
+  </div>
+
+  <div id="story"></div>
+  <div id="choices-area">
+    <div id="choices"></div>
+  </div>
+  <div id="log"></div>
+</div>
+
+<!-- 管理員面板 -->
+<div id="adminOverlay">
+  <h4>🔧 管理員模式</h4>
+  <button class="admin-over-btn" onclick="openJumpMenu()">劇情分支跳轉選單</button>
+  <button class="admin-over-btn" onclick="exitAdminMode()">退出管理員模式</button>
+  <div id="tagInfo"></div>
+</div>
+
+<script>
+const districtData = {
+  "半山區": {
+    wealthProb: {rich:0.70, middle:0.28, poor:0.02},
+    originProb: {localHK:0.35, uk:0.25, sg:0.15, cnMainland:0.20, others:0.05},
+    desc: "豪宅集中地，多為跨國企業高層、舊家族；少量為繼承舊大屋但現金拮据嘅家庭"
+  },
+  "西貢": {
+    wealthProb: {rich:0.40, middle:0.50, poor:0.10},
+    originProb: {localHK:0.60, uk:0.10, sg:0.05, cnMainland:0.20, others:0.05},
+    desc: "豪宅同鄉村屋並存；有富裕城鄉避世家庭，亦有務農、漁民基層"
+  },
+  "沙田": {
+    wealthProb: {rich:0.10, middle:0.75, poor:0.15},
+    originProb: {localHK:0.75, uk:0.03, sg:0.02, cnMainland:0.18, others:0.02},
+    desc: "大型新市鎮，大多數為打工中產；新移民家庭比例偏高，少量專業人士"
+  },
+  "大埔": {
+    wealthProb: {rich:0.08, middle:0.72, poor:0.20},
+    originProb: {localHK:0.78, uk:0.02, sg:0.01, cnMainland:0.17, others:0.02},
+    desc: "新市鎮+鄉郊混合，中產為主，鄉村基層較多"
+  },
+  "將軍澳": {
+    wealthProb: {rich:0.05, middle:0.80, poor:0.15},
+    originProb: {localHK:0.82, uk:0.01, sg:0.01, cnMainland:0.15, others:0.01},
+    desc: "年輕中產家庭為主，公屋同私樓並存，外地出身比例偏低"
+  },
+  "九龍塘": {
+    wealthProb: {rich:0.60, middle:0.35, poor:0.05},
+    originProb: {localHK:0.45, uk:0.20, sg:0.10, cnMainland:0.20, others:0.05},
+    desc: "傳統豪宅區、名校網；少數係舊細單位唐樓住戶"
+  },
+  "深水埗": {
+    wealthProb: {rich:0.02, middle:0.48, poor:0.50},
+    originProb: {localHK:0.65, uk:0.01, sg:0.01, cnMainland:0.20, southAsia:0.12, others:0.01},
+    desc: "舊唐樓、公屋密集；基層為主，有少量紮根舊區本土商人、南亞裔家庭"
+  },
+  "觀塘": {
+    wealthProb: {rich:0.03, middle:0.52, poor:0.45},
+    originProb: {localHK:0.70, uk:0.01, sg:0.01, cnMainland:0.22, southAsia:0.05, others:0.01},
+    desc: "舊工業區轉型，公屋多，藍領家庭為主"
+  },
+  "元朗舊墟": {
+    wealthProb: {rich:0.02, middle:0.43, poor:0.55},
+    originProb: {localHK:0.62, uk:0.00, sg:0.00, cnMainland:0.25, southAsia:0.11, others:0.02},
+    desc: "鄉村同舊墟並存，基層、務農家庭多；新移民同少數族裔比例高"
+  },
+  "灣仔": {
+    wealthProb: {rich:0.35, middle:0.55, poor:0.10},
+    originProb: {localHK:0.50, uk:0.12, sg:0.08, cnMainland:0.25, others:0.05},
+    desc: "商業核心，豪宅同舊唐樓一街之隔；有大量從事服務業嘅基層同專業人士"
+  }
+};
+
+function rollByProb(probObj){
+  const total = Object.values(probObj).reduce((a,b)=>a+b,0);
+  let r = Math.random() * total;
+  for(let key in probObj){
+    r -= probObj[key];
+    if(r <= 0) return key;
+  }
+}
+
+function generateBirthBackground(gameState){
+  const {district, familyWealth, origin} = gameState.birth;
+  let originText = "";
+  switch(origin){
+    case "localHK": originText = "土生土長香港家庭"; break;
+    case "uk": originText = "英國背景回流家庭"; break;
+    case "sg": originText = "新加坡背景家庭"; break;
+    case "cnMainland": originText = "內地新移民家庭"; break;
+    case "southAsia": originText = "南亞裔家庭"; break;
+    case "others": originText = "其他海外背景家庭"; break;
+  }
+
+  let wealthDesc = "";
+  if(familyWealth === "rich"){
+    if(district === "半山區" || district === "九龍塘"){
+      wealthDesc = "優質物業價值極高，父母係跨國高管、老牌家族比例較多。普遍資源充足，私人補習、海外遊學機會高；但多數父母工作極忙，陪伴時間少。";
+    }else if(district === "西貢"){
+      wealthDesc = "自置鄉村屋居多，家人普遍為經營生意或者專業人士。居住空間大，環境寧靜；生活節奏比較放鬆，但國際人脈較少。";
+    }else if(district === "深水埗"){
+      wealthDesc = "舊區本土小型地產商、批發生意人。家族有物業收租比例較多，習慣留喺舊區生活，生活作風低調；熟悉社區網絡，街坊關係良好。";
+    }else{
+      wealthDesc = "家庭經濟條件良好，生活穩定，有能力負擔唔少課外開支。";
+    }
+  }
+  else if(familyWealth === "middle"){
+    if(district === "沙田" || district === "將軍澳"){
+      wealthDesc = "典型香港打工中產比例較多。通常擁有私樓/居屋，父母多數為文職、教師、護士等。收入穩定，平均儲蓄比例中上，多數家庭重視學業，期望仔女讀好大學。";
+    }else if(district === "灣仔"){
+      wealthDesc = "普遍舊樓細單位，收入尚可，但租金/生活開支高。生活喺市中心，見識多，接觸好多不同國籍嘅人。";
+    }else if(district === "西貢"){
+      wealthDesc = "多數鄉村家庭，可能做小生意或者散工多，居住空間大，但交通唔方便。";
+    }else{
+      wealthDesc = "家境普通，衣食無憂，不過冇太多多餘金錢用喺昂貴課外活動。";
+    }
+  }
+  else if(familyWealth === "poor"){
+    if(district === "半山區"){
+      wealthDesc = "特例困境：祖上留低半山舊大宅，物業天價，上一代因為童年太富裕，生活揮霍，痛失學習成長或商業機會，開支過大，導致現金收入微薄。維修、差餉開支沉重，「有樓冇錢」。外表係豪宅，實際生活拮據。";
+    }else{
+      wealthDesc = "公屋或者細舊唐樓，普遍父母工作為藍領、散工，通常收入比較唔穩定。有時要面對房租壓力、生活開支壓力。資源有限，補習、課外活動有可能係奢侈品。";
+    }
+  }
+
+  return `【出身背景】
+居住地：${district}
+家庭背景：${originText}
+${wealthDesc}`;
+}
+
+// 核心遊戲狀態
+let gameState = {
+  birth:{
+    gender:"male",
+    orientation:"pan",
+    familyWealth:"middle",
+    birthCountry:"文萊",
+    district:"葵青區",
+    residenceType:"公共屋邨",
+    residenceName:"青衣邨",
+    origin:"localHK"
+  },
+  initialNationality:"",
+  ocean:{
+    openness: 0,
+    conscientiousness: 0,
+    extraversion: 0,
+    agreeableness: 0,
+    neuroticism: 0
+  },
+  trait:{
+    outgoing:50, pragmatic:50, empathy:50, introvert:50,
+    perception:50, attachment:50, bold:50, language:50,
+    imitate:50, social:50, selfCare:50, will:50,
+    imagination:50, selfControl:50, concentration:50,
+    inquire:50, creativity:50, patience:50, independence:50
+  },
+  stats:{ studyLevel:"medium", finance:"low" },
+  flags:{ familyBond:"" },
+  age:0,
+  stage:"start",
+  eventIndex:0,
+  birthLocked: false
+};
+
+let isAdminMode = false;
+let currentTimeout = null;
+let currentInterval = null;
+let skipStoryHandler = null;
+
+const STORAGE_MODE = "prototype"; 
+
+const gameStorage = {
+  async save(saveData) {
+    if(STORAGE_MODE === "prototype"){
+      try{
+        localStorage.setItem("lifeGameSave", JSON.stringify(saveData));
+        return true;
+      }catch(e){ return false; }
+    }
+  },
+  async load() {
+    if(STORAGE_MODE === "prototype"){
+      try{
+        const raw = localStorage.getItem("lifeGameSave");
+        if(raw) return JSON.parse(raw);
+        return null;
+      }catch(e){ return null; }
+    }
+  }
+}
+
+const trans = {
+  gender: {male:"男", female:"女"},
+  orientation: {hetero:"異性戀", homo:"同性戀", bi:"雙性戀", pan:"泛性戀", asexual:"無性戀"},
+  familyWealth: {poor:"貧窮", middle:"中等", rich:"富裕"},
+  studyLevel: {low:"低", medium:"中等", high:"高"},
+  finance: {low:"低", medium:"中等", high:"高"},
+  stage: {
+    start:"開局｜抽先天屬性",
+    prologue:"序章",
+    age0_spring:"0歲春季", age0_summer:"0歲夏季", age0_autumn:"0歲秋季", age0_winter:"0歲冬季",
+    age1_spring:"1歲春季", age1_summer:"1歲夏季", age1_autumn:"1歲秋季", age1_winter:"1歲冬季",
+    age2_spring:"2歲春季", age2_summer:"2歲夏季", age2_autumn:"2歲秋季", age2_winter:"2歲冬季",
+    age3_spring:"3歲春季", age3_summer:"3歲夏季", age3_autumn:"3歲秋季", age3_winter:"3歲冬季",
+    childhoodEvent:"童年事件階段", age15Choice:"15歲抉擇階段"
+  },
+  origin:{
+    localHK:"香港本地土生家庭", uk:"英國背景回流家庭", sg:"新加坡背景家庭",
+    cnMainland:"內地新移民家庭", southAsia:"南亞裔家庭", others:"其他海外背景家庭"
+  }
+};
+
+const worldCountryWeightList = [
+  {name:"日本", weight:22}, {name:"大韓民國", weight:20}, {name:"中華民國(台灣)", weight:19},
+  {name:"新加坡", weight:18}, {name:"馬來西亞", weight:16}, {name:"泰國", weight:15},
+  {name:"英國", weight:14}, {name:"美國", weight:14}, {name:"澳洲", weight:13},
+  {name:"加拿大", weight:13}, {name:"菲律賓", weight:12}, {name:"越南", weight:11},
+  {name:"印度", weight:10}, {name:"巴基斯坦", weight:9}, {name:"印尼", weight:9},
+  {name:"德國", weight:8}, {name:"法國", weight:8}, {name:"新西蘭", weight:7},
+  {name:"老撾", weight:6}, {name:"柬埔寨", weight:6}, {name:"緬甸", weight:6},
+  {name:"孟加拉國", weight:5}, {name:"尼泊爾", weight:5}, {name:"斯里蘭卡", weight:4},
+  {name:"沙特阿拉伯", weight:4}, {name:"土耳其", weight:4}, {name:"巴西", weight:3},
+  {name:"南非", weight:2}, {name:"尼日利亞", weight:2}, {name:"意大利", weight:7},
+  {name:"西班牙", weight:7}, {name:"荷蘭", weight:6}, {name:"瑞典", weight:5}, {name:"瑞士", weight:5}
+];
+
+const hkDistrictResidenceList = [
+  { district:"油尖旺區", residences:[{type:"公共屋邨", name:"海富苑"}, {type:"公共屋邨", name:"富榮花園"}, {type:"私人屋苑", name:"嘉文花園"}, {type:"豪宅", name:"凱旋門"}, {type:"私人屋苑", name:"君滙港"}, {type:"私人屋苑", name:"港灣豪庭"}, {type:"唐樓", name:"大同新邨"}, {type:"唐樓", name:"佐敦舊唐樓"}, {type:"單棟唐樓", name:"大角咀舊樓"}] },
+  { district:"深水埗區", residences:[{type:"公共屋邨", name:"李鄭屋邨"}, {type:"公共屋邨", name:"元州邨"}, {type:"公共屋邨", name:"幸福邨"}, {type:"公共屋邨", name:"麗閣邨"}, {type:"公共屋邨", name:"南昌邨"}, {type:"私人大型屋苑", name:"美孚新邨"}, {type:"唐樓", name:"長沙灣唐樓"}, {type:"舊式洋樓", name:"深水埗舊洋樓"}] },
+  { district:"九龍城區", residences:[{type:"私人屋苑", name:"黃埔花園"}, {type:"公共屋邨", name:"愛民邨"}, {type:"公共屋邨", name:"何文田邨"}, {type:"公共屋邨", name:"紅磡邨"}, {type:"私人屋苑", name:"海逸豪園"}, {type:"唐樓", name:"土瓜灣唐樓"}] },
+  { district:"黃大仙區", residences:[{type:"公共屋邨", name:"黃大仙下邨"}, {type:"公共屋邨", name:"竹園北邨"}, {type:"公共屋邨", name:"彩雲邨"}, {type:"公共屋邨", name:"啟晴邨"}, {type:"公共屋邨", name:"德朗邨"}] },
+  { district:"觀塘區", residences:[{type:"公共屋邨", name:"牛頭角下邨"}, {type:"公共屋邨", name:"樂華邨"}, {type:"公共屋邨", name:"順利邨"}, {type:"私人屋苑", name:"麗晶花園"}, {type:"私人屋苑", name:"淘大花園"}, {type:"唐樓", name:"觀塘舊唐樓"}] },
+  { district:"中西區", residences:[{type:"私人屋苑", name:"寶翠園"}, {type:"私人屋苑", name:"雍景臺"}, {type:"豪宅", name:"羅便臣道80號"}, {type:"唐樓", name:"荷李活華庭"}] },
+  { district:"灣仔區", residences:[{type:"私人屋苑", name:"駿逸峰"}, {type:"私人屋苑", name:"囍滙"}, {type:"豪宅", name:"帝景園"}, {type:"私人屋苑", name:"尚翹峰"}, {type:"唐樓", name:"灣仔舊唐樓"}] },
+  { district:"東區", residences:[{type:"公共屋邨", name:"杏花邨"}, {type:"公共屋邨", name:"耀東邨"}, {type:"公共屋邨", name:"興東邨"}, {type:"私人屋苑", name:"康怡花園"}, {type:"私人屋苑", name:"太古城"}] },
+  { district:"南區", residences:[{type:"私人屋苑", name:"香港仔中心"}, {type:"公共屋邨", name:"華富邨"}, {type:"私人屋苑", name:"海怡半島"}, {type:"私人屋苑", name:"薄扶林花園"}] },
+  { district:"荃灣區", residences:[{type:"公共屋邨", name:"綠楊新邨"}, {type:"公共屋邨", name:"福來邨"}, {type:"私人屋苑", name:"海濱花園"}, {type:"私人屋苑", name:"荃威花園"}] },
+  { district:"葵青區", residences:[{type:"公共屋邨", name:"葵盛東邨"}, {type:"公共屋邨", name:"石籬邨"}, {type:"公共屋邨", name:"荔景邨"}, {type:"公共屋邨", name:"青衣邨"}, {type:"私人屋苑", name:"灝景灣"}] },
+  { district:"沙田區", residences:[{type:"公共屋邨", name:"美林邨"}, {type:"公共屋邨", name:"恆安邨"}, {type:"公共屋邨", name:"沙角邨"}, {type:"豪宅", name:"名城"}, {type:"私人屋苑", name:"第一城"}] },
+  { district:"大埔區", residences:[{type:"公共屋邨", name:"富善邨"}, {type:"公共屋邨", name:"廣福邨"}, {type:"私人屋苑", name:"大埔廣場"}, {type:"寶湖花園"}] },
+  { district:"北區", residences:[{type:"公共屋邨", name:"彩園邨"}, {type:"公共屋邨", name:"太平邨"}, {type:"公共屋邨", name:"嘉福邨"}, {type:"私人屋苑", name:"粉嶺中心"}] },
+  { district:"元朗區", residences:[{type:"公共屋邨", name:"朗屏邨"}, {type:"公共屋邨", name:"天耀邨"}, {type:"公共屋邨", name:"天瑞邨"}, {type:"私人屋苑", name:"嘉湖山莊"}, {type:"村屋", name:"元朗鄉村村屋"}] },
+  { district:"屯門區", residences:[{type:"公共屋邨", name:"良景邨"}, {type:"公共屋邨", name:"田景邨"}, {type:"兆康苑", name:"兆康苑"}, {type:"私人屋苑", name:"恆福花園"}, {type:"私人屋苑", name:"龍門居"}] },
+  { district:"西貢區", residences:[{type:"公共屋邨", name:"寶林邨"}, {type:"公共屋邨", name:"景林邨"}, {type:"公共屋邨", name:"尚德邨"}, {type:"私人屋苑", name:"將軍澳中心"}, {type:"私人屋苑", name:"東港城"}, {type:"村屋", name:"西貢鄉村村屋"}] },
+  { district:"離島區", residences:[{type:"公共屋邨", name:"東涌逸東邨"}, {type:"公共屋邨", name:"東涌富東邨"}, {type:"私人屋苑", name:"愉景灣"}, {type:"村屋", name:"梅窩銀礦灣村屋"}] }
+];
+
+const storyDistrictToHKAdminDistrict = {
+  "半山區":"中西區", "西貢":"西貢區", "沙田":"沙田區", "大埔":"大埔區",
+  "將軍澳":"西貢區", "九龍塘":"九龍城區", "深水埗":"深水埗區", "觀塘":"觀塘區",
+  "元朗舊墟":"元朗區", "灣仔":"灣仔區"
+};
+
+const jumpList = [
+  {name:"開局｜抽先天屬性", fn:()=>showStartScreen()},
+  {name:"序章", fn:()=>runPrologue()},
+  {name:"0歲·春", fn:()=>runAge0Spring()},
+  {name:"0歲·夏", fn:()=>runAge0Summer()},
+  {name:"0歲·秋", fn:()=>runAge0Autumn()},
+  {name:"0歲·冬", fn:()=>runAge0Winter()},
+  {name:"1歲·春", fn:()=>runAge1Spring()},
+  {name:"1歲·夏", fn:()=>runAge1Summer()},
+  {name:"1歲·秋", fn:()=>runAge1Autumn()},
+  {name:"1歲·冬", fn:()=>runAge1Winter()},
+  {name:"2歲·春", fn:()=>runAge2Spring()},
+  {name:"2歲·夏", fn:()=>runAge2Summer()},
+  {name:"2歲·秋", fn:()=>runAge2Autumn()},
+  {name:"2歲·冬", fn:()=>runAge2Winter()},
+  {name:"3歲·春", fn:()=>runAge3Spring()},
+  {name:"3歲·夏", fn:()=>runAge3Summer()},
+  {name:"3歲·秋", fn:()=>runAge3Autumn()},
+  {name:"3歲·冬", fn:()=>runAge3Winter()},
+  {name:"童年事件起點", fn:()=>runNextChildhoodEvent()},
+  {name:"15歲選擇畫面", fn:()=>showAge15FinalChoices()}
+];
+
+const $ = s=>document.querySelector(s);
+const $$ = s=>document.querySelectorAll(s);
+
+// ===== 遊戲開場動畫邏輯 =====
+function playTitleIntroAnimation(){
+  const titleCover = $("#titleCover");
+  const gameTitle = $("#gameTitle");
+  const gameSubTitle = $("#gameSubTitle");
+  const startBtn = $("#startGameBtn");
+
+  // 1. 圖片背景淡入
+  setTimeout(()=>{
+    titleCover.style.opacity = "1";
+  }, 100);
+
+  // 2. 標題與副標題淡入並縮放
+  setTimeout(()=>{
+    gameTitle.style.opacity = "1";
+    gameTitle.style.transform = "scale(1)";
+    if(gameSubTitle){
+      gameSubTitle.style.opacity = "1";
+      gameSubTitle.style.transform = "translateY(0)";
+    }
+  }, 1000);
+
+  // 3. 彈出「開始遊戲」按鈕
+  setTimeout(()=>{
+    startBtn.style.display = "inline-block";
+    setTimeout(()=>{
+      startBtn.style.opacity = "1";
+      startBtn.style.transform = "translateY(0)";
+    }, 50);
+  }, 2200);
+}
+
+// 點擊「開始遊戲」後過渡至遊戲主介面
+function enterGameFromTitle(){
+  const titleCover = $("#titleCover");
+  const container = $("#container");
+
+  titleCover.style.opacity = "0";
+  setTimeout(()=>{
+    titleCover.style.display = "none";
+    container.style.display = "flex";
+    setTimeout(()=>{
+      container.style.opacity = "1";
+      loadGame(); 
+    }, 50);
+  }, 1000);
+}
+
+function clearTimeouts(){
+  if(currentTimeout) clearTimeout(currentTimeout);
+  if(currentInterval) clearInterval(currentInterval);
+}
+
+function clearChoices(){
+  $("#choices").innerHTML="";
+}
+
+function addChoice(text, callback){
+  let btn = document.createElement("button");
+  btn.className="choice-btn";
+  btn.innerText=text;
+  btn.onclick=callback;
+  $("#choices").appendChild(btn);
+}
+
+function openSettings(){
+  $("#settingsModal").style.display = "flex";
+  tapPhase = 0;
+  tapCount = 0;
+}
+function closeSettings(){
+  $("#settingsModal").style.display = "none";
+  $("#shareToast").style.display = "none";
+}
+async function shareGameLink(){
+  const link = window.location.href;
+  try {
+    await navigator.clipboard.writeText(link);
+    const toast = $("#shareToast");
+    toast.style.display = "block";
+  } catch(e) {
+    alert("複製連結失敗，請手動複製網址分享。");
+  }
+}
+
+function updateOcean(deltaObj){
+  for(let key in deltaObj){
+    if(gameState.ocean[key] !== undefined){
+      gameState.ocean[key] = Math.max(0, Math.min(100, gameState.ocean[key] + deltaObj[key]));
+    }
+  }
+  drawOceanRadar();
+}
+
+function initOceanAttributes(){
+  const g = gameState;
+  let baseAgeVal = 0;
+  
+  if(g.age === 0) baseAgeVal = 0;
+  else if(g.age <= 15) baseAgeVal = 35;
+  else if(g.age <= 30) baseAgeVal = 55;
+  else baseAgeVal = 70;
+
+  g.ocean = {
+    openness: baseAgeVal,
+    conscientiousness: baseAgeVal,
+    extraversion: baseAgeVal,
+    agreeableness: baseAgeVal,
+    neuroticism: baseAgeVal
+  };
+
+  const district = g.birth.district;
+  const wealth = g.birth.familyWealth;
+  const origin = g.birth.origin;
+
+  if(wealth === "poor" || district === "深水埗" || district === "元朗舊墟"){
+    g.ocean.neuroticism += 12;
+  } else if(district === "半山區" && wealth === "rich"){
+    g.ocean.neuroticism += 8;
+  }
+
+  if(district === "灣仔" || district === "九龍塘" || district === "半山區" || origin === "uk" || origin === "sg"){
+    g.ocean.openness += 12;
+  }
+
+  if(district === "深水埗" || district === "觀塘"){
+    g.ocean.agreeableness += 6;
+  }
+
+  for(let k in g.ocean){
+    g.ocean[k] = Math.max(0, Math.min(100, g.ocean[k]));
+  }
+
+  drawOceanRadar();
+}
+
+function drawOceanRadar(){
+  const canvas = document.getElementById("oceanCanvas");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+  const centerX = width / 2;
+  const centerY = height / 2 + 10;
+  const radius = 80;
+
+  ctx.clearRect(0, 0, width, height);
+
+  const labels = [
+    { name: "開放性 (O)", key: "openness" },
+    { name: "盡責性 (C)", key: "conscientiousness" },
+    { name: "外向性 (E)", key: "extraversion" },
+    { name: "宜人性 (A)", key: "agreeableness" },
+    { name: "神經質 (N)", key: "neuroticism" }
+  ];
+
+  const total = labels.length;
+  const angleStep = (Math.PI * 2) / total;
+
+  ctx.strokeStyle = "#444";
+  ctx.lineWidth = 1;
+  for(let level = 1; level <= 5; level++){
+    const r = (radius / 5) * level;
+    ctx.beginPath();
+    for(let i = 0; i < total; i++){
+      const angle = i * angleStep - Math.PI / 2;
+      const x = centerX + r * Math.cos(angle);
+      const y = centerY + r * Math.sin(angle);
+      if(i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#bbb";
+  ctx.font = "12px system-ui";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  for(let i = 0; i < total; i++){
+    const angle = i * angleStep - Math.PI / 2;
+    const x = centerX + radius * Math.cos(angle);
+    const y = centerY + radius * Math.sin(angle);
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = "#333";
+    ctx.stroke();
+
+    const labelX = centerX + (radius + 24) * Math.cos(angle);
+    const labelY = centerY + (radius + 18) * Math.sin(angle);
+    const val = gameState.ocean[labels[i].key] || 0;
+    ctx.fillText(`${labels[i].name}:${Math.round(val)}`, labelX, labelY);
+  }
+
+  ctx.beginPath();
+  for(let i = 0; i < total; i++){
+    const angle = i * angleStep - Math.PI / 2;
+    const val = gameState.ocean[labels[i].key] || 0;
+    const currentR = (val / 100) * radius;
+    const x = centerX + currentR * Math.cos(angle);
+    const y = centerY + currentR * Math.sin(angle);
+    if(i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255, 193, 7, 0.35)";
+  ctx.fill();
+  ctx.strokeStyle = "#ffc107";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function playSequentialStory(fullText, onComplete, showSkipBtn = true){
+  clearTimeouts();
+  clearChoices();
+
+  if(skipStoryHandler){
+    document.removeEventListener("click", skipStoryHandler);
+    skipStoryHandler = null;
+  }
+
+  let rawSentences = fullText.split(/([。！？\n])/);
+  let sentences = [];
+  let currentSentence = "";
+  
+  for(let i=0; i<rawSentences.length; i++){
+    currentSentence += rawSentences[i];
+    if(/[。！？\n]/.test(rawSentences[i]) || i === rawSentences.length - 1){
+      if(currentSentence.trim().length > 0){
+        sentences.push(currentSentence.trim());
+      }
+      currentSentence = "";
+    }
+  }
+
+  let index = 0;
+  const storyEl = $("#story");
+
+  if(showSkipBtn){
+    const skipBtn = document.createElement("button");
+    skipBtn.className = "skip-btn";
+    skipBtn.innerText = "⏭️ 跳過劇本";
+    skipBtn.onclick = function(e){
+      e.stopPropagation();
+      clearTimeouts();
+      cleanupStoryPlayer();
+      onComplete();
+    }
+    $("#choices").appendChild(skipBtn);
+  }
+
+  function cleanupStoryPlayer(){
+    if(skipStoryHandler){
+      document.removeEventListener("click", skipStoryHandler);
+      skipStoryHandler = null;
+    }
+  }
+
+  function playNextSentence(){
+    if(index >= sentences.length){
+      currentTimeout = setTimeout(()=>{
+        cleanupStoryPlayer();
+        onComplete();
+      }, 800);
+      return;
+    }
+
+    let textToType = sentences[index];
+    index++;
+    storyEl.innerText = "";
+    storyEl.style.opacity = 1;
+
+    let charIdx = 0;
+
+    if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
+    skipStoryHandler = function(e){
+      if(e.target.closest('button') || e.target.closest('#settingsModal') || e.target.closest('#adminOverlay')) return;
+      
+      clearInterval(currentInterval);
+      clearTimeout(currentTimeout);
+      document.removeEventListener("click", skipStoryHandler);
+      
+      storyEl.style.opacity = 0;
+      currentTimeout = setTimeout(()=>{
+        playNextSentence();
+      }, 150);
+    };
+    document.addEventListener("click", skipStoryHandler);
+
+    currentInterval = setInterval(()=>{
+      if(charIdx < textToType.length){
+        storyEl.innerText += textToType.charAt(charIdx);
+        charIdx++;
+      }else{
+        clearInterval(currentInterval);
+        if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
+        let readWaitTime = Math.max(1800, textToType.length * 110);
+        currentTimeout = setTimeout(()=>{
+          storyEl.style.opacity = 0;
+          currentTimeout = setTimeout(()=>{
+            playNextSentence();
+          }, 300);
+        }, readWaitTime);
+      }
+    }, 35);
+  }
+
+  playNextSentence();
+  refreshTagDisplay();
+}
+
+function refreshTagDisplay(){
+  const g = gameState;
+  const txt = `【隱藏管理員標籤】
+性別：${trans.gender[g.birth.gender]}
+性取向：${trans.orientation[g.birth.orientation]}
+家庭出身：${trans.origin[g.birth.origin]}
+家庭經濟：${trans.familyWealth[g.birth.familyWealth]}
+故事分區：${g.birth.district}
+
+角色歲數：${g.age}
+當前階段：${g.stage}`;
+  $("#tagInfo").innerText = txt;
+}
+
+function rollNationality(){
+  const r = Math.random();
+  let nation;
+  if(r < 0.65){ nation = "中國香港"; }
+  else if(r < 0.85){ nation = "中國內地"; }
+  else {
+    let totalWeight = 0;
+    worldCountryWeightList.forEach(c=>totalWeight += c.weight);
+    let rand = Math.random() * totalWeight;
+    let acc = 0;
+    for(let c of worldCountryWeightList){
+      acc += c.weight;
+      if(rand <= acc){ nation = c.name; break; }
+    }
+  }
+  gameState.birth.birthCountry = nation;
+  gameState.initialNationality = nation;
+}
+
+function rollHKResidence(storyDistrictName){
+  const adminDistrict = storyDistrictToHKAdminDistrict[storyDistrictName];
+  const districtObj = hkDistrictResidenceList.find(item=>item.district === adminDistrict);
+  const randRes = districtObj.residences[Math.floor(Math.random() * districtObj.residences.length)];
+  gameState.birth.residenceType = randRes.type;
+  gameState.birth.residenceName = randRes.name;
+}
+
+function rollBirthAttributes(){
+  gameState.birth.gender = ["male","female"][Math.floor(Math.random()*2)];
+  gameState.birth.orientation = ["hetero","homo","bi","pan","asexual"][Math.floor(Math.random()*5)];
+
+  const districtList = Object.keys(districtData);
+  const selectedDistrict = districtList[Math.floor(Math.random()*districtList.length)];
+  gameState.birth.district = selectedDistrict;
+  const d = districtData[selectedDistrict];
+
+  gameState.birth.familyWealth = rollByProb(d.wealthProb);
+  gameState.birth.origin = rollByProb(d.originProb);
+
+  rollNationality();
+  rollHKResidence(selectedDistrict);
+  gameState.age = 0;
+  
+  initOceanAttributes();
+}
+
+function checkAgeNationalityChange(){
+  if(gameState.age >= 7 && gameState.birth.birthCountry !== "中國香港"){
+    gameState.birth.birthCountry = "中國香港";
+  }
+}
+
+function getWealthDesc(){
+  switch(gameState.birth.familyWealth){
+    case "poor": return "屋企單位細，環境簡樸，父母要長時間返工先夠維持生計，照顧你嘅時間有限。";
+    case "middle": return "家境普通，衣食無憂，但唔會有太多多餘錢使喺玩樂同興趣上面。";
+    case "rich": return "家境優渥，住所設備齊全，父母有充足時間同資源照顧你成長。";
+  }
+  return "";
+}
+
+function showStartScreen(){
+  clearTimeouts();
+  clearChoices();
+  gameState.stage = "start";
+  gameState.birthLocked = false;
+  rollBirthAttributes();
+  const bioText = generateBirthBackground(gameState);
+  
+  $("#story").innerText = `新的人生即將開始。\n${bioText}\n\n居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」\n國籍：${gameState.birth.birthCountry}\n\n你的出身條件已經隨機生成。`;
+
+  addChoice("開始新一局", async ()=>{
+    gameState.birthLocked = true;
+    gameState.age = 0;
+    gameState.eventIndex = 0;
+    gameState.stage = "prologue";
+    await gameStorage.save(gameState);
+    runPrologue();
+  });
+  addChoice("重新抽取先天屬性", ()=>{
+    showStartScreen();
+  });
+  refreshTagDisplay();
+}
+
+function runPrologue(){
+  gameState.stage = "prologue";
+  gameState.age = 0;
+  
+  const prologueText = `序章：你第一聲的啼哭
+
+你在溫暖而黑暗的羊水當中，被一束刺眼嘅白光無情劃破。
+
+冰冷嘅空氣湧入，背脊傳來別人的輕輕一拍。
+
+「啪！」
+
+胸腔擴張，你本能地張開口——
+
+「哇——！」
+
+一聲響亮嘅喊聲，劃破產房寂靜。
+
+媽媽溫柔嘅喘息、爸爸激動顫抖嘅雙手，將你緊緊托起。
+
+呢個世界，我嚟喇。`;
+
+  playSequentialStory(prologueText, async ()=>{
+    gameState.stage = "age0_spring";
+    await gameStorage.save(gameState);
+    runAge0Spring();
+  }, true);
+}
+
+function runAge0Spring(){
+  gameState.stage = "age0_spring";
+  gameState.age = 0;
+  checkAgeNationalityChange();
+  const wealthDesc = getWealthDesc();
+  const storyText = `0歲 · 嬰兒時期（春）
+國籍：${gameState.birth.birthCountry}｜出生於香港${gameState.birth.district}，居於${gameState.birth.residenceType}「${gameState.birth.residenceName}」
+
+${wealthDesc}
+眼皮前只有一片朦朧嘅光影，世界好似冚住咗一層溫柔嘅紗。
+耳邊傳來爸爸媽媽同屋企人軟綿綿嘅說話聲，呢啲係你降臨呢個世界聽到嘅第一首催眠曲。
+你仲未識講嘢同聽野，亦未識企起身行路，只係識得用細細聲嘅喊鬧去表達需要。
+日子好似微風咁過得好快，呢三個月裡面，嗰啲迷迷糊糊嘅影，變成了最熟悉、最溫暖嘅面孔。
+只要一聽到佢哋嘅聲音，你所有嘅不安就會即刻煙消雲散。
+歡迎你嚟到呢個世界喇，BB仔……`;
+
+  playSequentialStory(storyText, async ()=>{
+    gameState.stage = "age0_summer";
+    await gameStorage.save(gameState);
+    runAge0Summer();
+  });
+}
+
+function runAge0Summer(){
+  gameState.stage = "age0_summer";
+  const wealthDesc = getWealthDesc();
+  const storyText = `0歲 · 嬰兒時期（夏）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+
+${wealthDesc}
+炎熱嘅夏季，冷氣同風扇輪流轉動，空氣帶住淡淡嘅奶味。
+爸爸拎住彩色嘅搖鈴喺你眼前輕輕搖動，引你注意同你玩。
+有一次你終於捉住咗搖鈴，鈴聲響起，你瞪大眼睛，不由自主地「𠺝𠺝」聲咁笑出嚟。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母對你探索行為嘅回應：";
+    addChoice("A｜父母持續用不同顏色、發聲玩具互動，不斷刺激視覺觸覺", async ()=>{
+      updateOcean({ openness: +4, extraversion: +3 });
+      gameState.stage = "age0_autumn";
+      await gameStorage.save(gameState);
+      runAge0Autumn();
+    });
+    addChoice("B｜父母偶爾拎搖鈴逗你，玩一陣就等你休息吓，想你學識獨處", async ()=>{
+      updateOcean({ conscientiousness: +4, neuroticism: -2 });
+      gameState.stage = "age0_autumn";
+      await gameStorage.save(gameState);
+      runAge0Autumn();
+    });
+    addChoice("C｜父母害怕玩具物料含毒素，好少拎玩具，多數淨係睇住你訓覺", async ()=>{
+      updateOcean({ agreeableness: +4, neuroticism: +2 });
+      gameState.stage = "age0_autumn";
+      await gameStorage.save(gameState);
+      runAge0Autumn();
+    });
+  });
+}
+
+function runAge0Autumn(){
+  gameState.stage = "age0_autumn";
+  const wealthDesc = getWealthDesc();
+  const storyText = `0歲 · 嬰兒時期（秋）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+
+${wealthDesc}
+秋風變涼，你開始識得四處爬，探索呢個屋企嘅每一個角落。
+有日你爬到客廳門口，見到門縫有光透入嚟。媽媽及時發現，快步過來將你抱起。
+有時父母離開房間一陣，唔見咗佢哋，令你好驚慌，扁嘴開始喊。
+聽到返來嘅腳步聲，安全感返返嚟，喊聲慢慢收細。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你亂爬同分離焦慮嘅應對方式：";
+    addChoice("A｜父母做好安全防護，放手畀你隨意周圍爬探索，喊嗰陣等一陣先安撫", async ()=>{
+      updateOcean({ openness: +5, extraversion: +3 });
+      gameState.stage = "age0_winter";
+      await gameStorage.save(gameState);
+      runAge0Winter();
+    });
+    addChoice("B｜父母會睇實你，容許有限度探索，喊就安撫", async ()=>{
+      updateOcean({ conscientiousness: +3, neuroticism: -3 });
+      gameState.stage = "age0_winter";
+      await gameStorage.save(gameState);
+      runAge0Winter();
+    });
+    addChoice("C｜父母驚你受傷，多數將你放喺安全圍欄入面，即刻回應喊聲", async ()=>{
+      updateOcean({ neuroticism: +5, extraversion: -2 });
+      gameState.stage = "age0_winter";
+      await gameStorage.save(gameState);
+      runAge0Winter();
+    });
+  });
+}
+
+function runAge0Winter(){
+  gameState.stage = "age0_winter";
+  const wealthDesc = getWealthDesc();
+  const storyText = `0歲 · 嬰兒時期（冬）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+
+${wealthDesc}
+冬日天氣寒冷，你喺大廳捉住傢俬邊緣嘗試企起身。
+爸爸企喺幾步之外，伸出雙手鼓勵你向佢爬過來。
+呢個冬天，你開始學識用簡單嘅聲音叫「爸」、「媽」。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你嘗試企立同牙牙學語嘅回應：";
+    addChoice("A｜父母鼓勵你嘗試企同向前行，發出咿呀聲就會回應同對話", async ()=>{
+      updateOcean({ extraversion: +4, openness: +3 });
+      gameState.stage = "age1_spring"; gameState.age = 1;
+      await gameStorage.save(gameState);
+      runAge1Spring();
+    });
+    addChoice("B｜父母小心睇實你嘗試學習企穩，亦會鼓勵回應", async ()=>{
+      updateOcean({ conscientiousness: +3, agreeableness: +3 });
+      gameState.stage = "age1_spring"; gameState.age = 1;
+      await gameStorage.save(gameState);
+      runAge1Spring();
+    });
+    addChoice("C｜父母驚你跌親，唔太勉強你企起身", async ()=>{
+      updateOcean({ neuroticism: +4, conscientiousness: -2 });
+      gameState.stage = "age1_spring"; gameState.age = 1;
+      await gameStorage.save(gameState);
+      runAge1Spring();
+    });
+  });
+}
+
+function runAge1Spring(){
+  gameState.stage = "age1_spring"; gameState.age = 1;
+  checkAgeNationalityChange();
+  const wealthDesc = getWealthDesc();
+  const storyText = `1歲 · 幼兒時期（春）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+冬寒慢慢退去，你已經正式滿一歲，可以獨自企穩幾秒，踉踉蹌蹌行幾步。
+見到杯、公仔、狗狗，會試下講簡單單字。
+呢個春天，你開始真正用自己雙腳親身探索世界。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你探索物件、嘗試講單字嘅引導方式：";
+    addChoice("A｜父母擺大量安全物件畀你隨便摸研究，鼓勵自由探索", async ()=>{
+      updateOcean({ openness: +5, conscientiousness: -1 });
+      gameState.stage = "age1_summer";
+      await gameStorage.save(gameState);
+      runAge1Summer();
+    });
+    addChoice("B｜父母揀安全玩具，陪你一齊把玩，一邊講名稱糾正發音", async ()=>{
+      updateOcean({ conscientiousness: +4, openness: +2 });
+      gameState.stage = "age1_summer";
+      await gameStorage.save(gameState);
+      runAge1Summer();
+    });
+    addChoice("C｜父母不停同你講嘢，重複物件名稱；優先保護安全", async ()=>{
+      updateOcean({ extraversion: +4, agreeableness: +3 });
+      gameState.stage = "age1_summer";
+      await gameStorage.save(gameState);
+      runAge1Summer();
+    });
+  });
+}
+
+function runAge1Summer(){
+  gameState.stage = "age1_summer";
+  const wealthDesc = getWealthDesc();
+  const storyText = `1歲 · 幼兒時期（夏）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+盛夏暑氣籠住城市，你行得比較穩陣，鍾意開櫃門、拉抽屜。
+情緒變得鮮明，鍾意嘅嘢拍手大笑，唔鍾意嘅搖頭推開。
+見到心儀玩具會實實攬住唔肯交出去。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你模仿行為同佔有慾嘅回應：";
+    addChoice("A｜父母唔阻止你亂摸模仿，任由周圍探索，搶玩具時唔強迫讓出", async ()=>{
+      updateOcean({ openness: +4, agreeableness: -2 });
+      gameState.stage = "age1_autumn";
+      await gameStorage.save(gameState);
+      runAge1Autumn();
+    });
+    addChoice("B｜父母陪住一齊模仿遊戲，溫柔教你物件歸屬，不強迫即刻分享", async ()=>{
+      updateOcean({ agreeableness: +3, neuroticism: -2 });
+      gameState.stage = "age1_autumn";
+      await gameStorage.save(gameState);
+      runAge1Autumn();
+    });
+    addChoice("C｜父母積極回應每一個模仿動作，引導嘗試遞畀人，教初步分享", async ()=>{
+      updateOcean({ agreeableness: +5, conscientiousness: +3 });
+      gameState.stage = "age1_autumn";
+      await gameStorage.save(gameState);
+      runAge1Autumn();
+    });
+  });
+}
+
+function runAge1Autumn(){
+  gameState.stage = "age1_autumn";
+  const wealthDesc = getWealthDesc();
+  const storyText = `1歲 · 幼兒時期（秋）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+秋風吹走酷熱，父母推住嬰兒車帶你落公園。
+你見到其他細路喺公園玩，會停低靜靜望住佢哋。
+分離焦慮仍然存在，父母離開視線範圍你會即刻喊。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你接觸陌生人、同其他幼兒相處嘅應對方式：";
+    addChoice("A｜父母帶到公園，但不強迫主動接觸其他小朋友，任由遠距離觀察", async ()=>{
+      updateOcean({ neuroticism: +3, extraversion: -2 });
+      gameState.stage = "age1_winter";
+      await gameStorage.save(gameState);
+      runAge1Winter();
+    });
+    addChoice("B｜父母陪喺隔離，介紹其他小朋友認識，鼓勵試下一起玩但不勉強", async ()=>{
+      updateOcean({ extraversion: +3, agreeableness: +3 });
+      gameState.stage = "age1_winter";
+      await gameStorage.save(gameState);
+      runAge1Winter();
+    });
+    addChoice("C｜父母主動帶你同其他細路互動，幫你開啟交流", async ()=>{
+      updateOcean({ extraversion: +5, openness: +3 });
+      gameState.stage = "age1_winter";
+      await gameStorage.save(gameState);
+      runAge1Winter();
+    });
+  });
+}
+
+function runAge1Winter(){
+  gameState.stage = "age1_winter";
+  const wealthDesc = getWealthDesc();
+  const storyText = `1歲 · 幼兒時期（冬）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+寒風吹起，你開始識得簡單分類物件，將圓形波放入圓孔。
+會試下自己用細羹食飯，成日整到周圍都係飯粒。
+情緒起伏大，想做嘅事唔做到就會扭計大哭。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你嘗試自理、學習分類物件嘅回應：";
+    addChoice("A｜父母任由你自己嘗試用羹食飯、玩形狀配對，整污糟唔阻止", async ()=>{
+      updateOcean({ openness: +4, conscientiousness: +2 });
+      gameState.stage = "age2_spring"; gameState.age = 2;
+      await gameStorage.save(gameState);
+      runAge2Spring();
+    });
+    addChoice("B｜父母睇住你嘗試適時幫手，教你點拿羹對準形狀孔", async ()=>{
+      updateOcean({ conscientiousness: +5, neuroticism: -2 });
+      gameState.stage = "age2_spring"; gameState.age = 2;
+      await gameStorage.save(gameState);
+      runAge2Spring();
+    });
+    addChoice("C｜父母嘗試時從旁協助減少弄亂，示範並講解減少挫折感", async ()=>{
+      updateOcean({ agreeableness: +3, conscientiousness: -2 });
+      gameState.stage = "age2_spring"; gameState.age = 2;
+      await gameStorage.save(gameState);
+      runAge2Spring();
+    });
+  });
+}
+
+function runAge2Spring(){
+  gameState.stage = "age2_spring"; gameState.age = 2;
+  checkAgeNationalityChange();
+  const wealthDesc = getWealthDesc();
+  const storyText = `2歲 · 幼兒時期（春）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+踏入兩歲，正式進入「恐怖二歲」，口頭禪變成「唔好！」「唔要！」。
+語言能力大幅進步，可以講短短完整句子。
+自我意識非常強，會講「呢個係我㗎！」。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你反叛、自我主張嘅應對方式：";
+    addChoice("A｜父母盡量畀你自主選擇，只要唔危險就唔干預，包容反叛", async ()=>{
+      updateOcean({ openness: +5, conscientiousness: -2 });
+      gameState.stage = "age2_summer";
+      await gameStorage.save(gameState);
+      runAge2Summer();
+    });
+    addChoice("B｜父母設立清晰界線，安全範圍內自己揀，同你講道理", async ()=>{
+      updateOcean({ conscientiousness: +5, neuroticism: -3 });
+      gameState.stage = "age2_summer";
+      await gameStorage.save(gameState);
+      runAge2Summer();
+    });
+    addChoice("C｜父母安撫情緒，多順從你意願，減少衝突發脾氣", async ()=>{
+      updateOcean({ neuroticism: +4, conscientiousness: -3 });
+      gameState.stage = "age2_summer";
+      await gameStorage.save(gameState);
+      runAge2Summer();
+    });
+  });
+}
+
+function runAge2Summer(){
+  gameState.stage = "age2_summer";
+  const wealthDesc = getWealthDesc();
+  const storyText = `2歲 · 幼兒時期（夏）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+炎炎夏日，想像遊戲變得豐富，幫公仔「餵飯」、「蓋被」。
+呢段時期容易妒忌，見到父母照顧其他細路會唔開心爭攬。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你想像遊戲同妒忌情緒嘅回應：";
+    addChoice("A｜父母陪你玩但不介入幻想劇情；你妒忌扭計等你自己冷靜", async ()=>{
+      updateOcean({ openness: +5, agreeableness: -2 });
+      gameState.stage = "age2_autumn";
+      await gameStorage.save(gameState);
+      runAge2Autumn();
+    });
+    addChoice("B｜父母參與角色扮演陪餵公仔；妒忌時短暫溫柔解釋平衡注意力", async ()=>{
+      updateOcean({ agreeableness: +4, openness: +3 });
+      gameState.stage = "age2_autumn";
+      await gameStorage.save(gameState);
+      runAge2Autumn();
+    });
+    addChoice("C｜父母主動構建幻想故事，優先安撫妒忌確保感受到被愛", async ()=>{
+      updateOcean({ agreeableness: +5, neuroticism: -2 });
+      gameState.stage = "age2_autumn";
+      await gameStorage.save(gameState);
+      runAge2Autumn();
+    });
+  });
+}
+
+function runAge2Autumn(){
+  gameState.stage = "age2_autumn";
+  const wealthDesc = getWealthDesc();
+  const storyText = `2歲 · 幼兒時期（秋）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+秋意漸濃，同其他小朋友相處以平行遊戲為主，各自玩自己玩具。
+開始學習如廁訓練，有時會唔記得而整濕褲。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對如廁訓練、同同伴爭玩具嘅應對方式：";
+    addChoice("A｜父母唔急住推進如廁訓練隨自然；搶玩具時不即時介入自行磨合", async ()=>{
+      updateOcean({ neuroticism: -2, conscientiousness: -2 });
+      gameState.stage = "age2_winter";
+      await gameStorage.save(gameState);
+      runAge2Winter();
+    });
+    addChoice("B｜父母循序漸進教便壺不責備；爭玩具時介入引導輪流同分享", async ()=>{
+      updateOcean({ conscientiousness: +4, agreeableness: +4 });
+      gameState.stage = "age2_winter";
+      await gameStorage.save(gameState);
+      runAge2Winter();
+    });
+    addChoice("C｜父母積極幫忙練習如廁；發生爭執即刻安撫幫你處理衝突", async ()=>{
+      updateOcean({ neuroticism: +3, conscientiousness: +2 });
+      gameState.stage = "age2_winter";
+      await gameStorage.save(gameState);
+      runAge2Winter();
+    });
+  });
+}
+
+function runAge2Winter(){
+  gameState.stage = "age2_winter";
+  const wealthDesc = getWealthDesc();
+  const storyText = `2歲 · 幼兒時期（冬）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+冬日凍冷，你可以砌幾塊積木起塔，冧咗有時會唔開心。
+同理心萌芽，見到其他人喊，會嘗試拎玩具俾對方。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你砌積木、聆聽故事嘅引導方式：";
+    addChoice("A｜父母畀你自由玩積木不示範；讀故事簡單講不深入解釋", async ()=>{
+      updateOcean({ openness: +4, conscientiousness: +2 });
+      gameState.stage = "age3_spring"; gameState.age = 3;
+      await gameStorage.save(gameState);
+      runAge3Spring();
+    });
+    addChoice("B｜父母陪一齊砌積木冧咗鼓勵重試；讀故事指住圖畫解釋畫面", async ()=>{
+      updateOcean({ conscientiousness: +4, neuroticism: -3 });
+      gameState.stage = "age3_spring"; gameState.age = 3;
+      await gameStorage.save(gameState);
+      runAge3Spring();
+    });
+    addChoice("C｜父母安排固定閱讀時間細心講解；陪研究積木結構教穩陣起塔", async ()=>{
+      updateOcean({ conscientiousness: +5, openness: +3 });
+      gameState.stage = "age3_spring"; gameState.age = 3;
+      await gameStorage.save(gameState);
+      runAge3Spring();
+    });
+  });
+}
+
+function runAge3Spring(){
+  gameState.stage = "age3_spring"; gameState.age = 3;
+  checkAgeNationalityChange();
+  const wealthDesc = getWealthDesc();
+  const storyText = `3歲 · 幼兒時期（春）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+踏入三歲，會問好多問題，成日掛住講「點解？」。
+想像力豐富，會創造虛構朋友。
+自我概念清晰，知道自己叫咩名、幾多歲。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你不斷提問、結識同伴嘅回應：";
+    addChoice("A｜父母鼓勵自己搵答案，問點解時引導觀察不直接話你知", async ()=>{
+      updateOcean({ openness: +5, conscientiousness: +3 });
+      gameState.stage = "age3_summer";
+      await gameStorage.save(gameState);
+      runAge3Summer();
+    });
+    addChoice("B｜父母簡單淺白解答每一個提問，陪同其他小朋友玩適當調解", async ()=>{
+      updateOcean({ agreeableness: +4, extraversion: +3 });
+      gameState.stage = "age3_summer";
+      await gameStorage.save(gameState);
+      runAge3Summer();
+    });
+    addChoice("C｜父母詳細解釋提出嘅問題，拓展知識，幫忙學習合作技巧", async ()=>{
+      updateOcean({ openness: +4, conscientiousness: +4 });
+      gameState.stage = "age3_summer";
+      await gameStorage.save(gameState);
+      runAge3Summer();
+    });
+  });
+}
+
+function runAge3Summer(){
+  gameState.stage = "age3_summer";
+  const wealthDesc = getWealthDesc();
+  const storyText = `3歲 · 幼兒時期（夏）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+夏日炎熱，拎蠟筆亂畫圓圈線條。
+識得分辨情緒，但有時會將幻想當成真實講大話。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你繪畫、認知學習同幻想式說謊嘅回應：";
+    addChoice("A｜父母畀你自由畫畫不要求像；講幻想故事時不糾正任由發揮", async ()=>{
+      updateOcean({ openness: +5, conscientiousness: -1 });
+      gameState.stage = "age3_autumn";
+      await gameStorage.save(gameState);
+      runAge3Autumn();
+    });
+    addChoice("B｜父母一齊畫畫示範簡單線條；溫柔分開幻想同現實講真實事情", async ()=>{
+      updateOcean({ conscientiousness: +3, openness: +3 });
+      gameState.stage = "age3_autumn";
+      await gameStorage.save(gameState);
+      runAge3Autumn();
+    });
+    addChoice("C｜父母教畫圖認數字文字；幻想內容時細心引導分辨現實與想像", async ()=>{
+      updateOcean({ conscientiousness: +5, neuroticism: -2 });
+      gameState.stage = "age3_autumn";
+      await gameStorage.save(gameState);
+      runAge3Autumn();
+    });
+  });
+}
+
+function runAge3Autumn(){
+  gameState.stage = "age3_autumn";
+  const wealthDesc = getWealthDesc();
+  const storyText = `3歲 · 幼兒時期（秋）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+秋高氣爽，開始明白輪流與等待。
+你會開始顧及其他人感受，主動安慰唔開心嘅人。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你等待耐性、想要新玩具嘅應對方式：";
+    addChoice("A｜父母唔刻意訓練耐性，想要嘅嘢多數盡量滿足唔要長時間等待", async ()=>{
+      updateOcean({ conscientiousness: -3, neuroticism: +2 });
+      gameState.stage = "age3_winter";
+      await gameStorage.save(gameState);
+      runAge3Winter();
+    });
+    addChoice("B｜父母教學習等待，解釋唔係所有嘢都可以即刻有適當滿足", async ()=>{
+      updateOcean({ conscientiousness: +4, neuroticism: -2 });
+      gameState.stage = "age3_winter";
+      await gameStorage.save(gameState);
+      runAge3Winter();
+    });
+    addChoice("C｜父母透過遊戲刻意練習耐性，做到等待就俾獎勵教克制慾望", async ()=>{
+      updateOcean({ conscientiousness: +5, agreeableness: +3 });
+      gameState.stage = "age3_winter";
+      await gameStorage.save(gameState);
+      runAge3Winter();
+    });
+  });
+}
+
+function runAge3Winter(){
+  gameState.stage = "age3_winter";
+  const wealthDesc = getWealthDesc();
+  const storyText = `3歲 · 幼兒時期（冬）
+國籍：${gameState.birth.birthCountry}｜居於${gameState.birth.district}
+${wealthDesc}
+
+冬天來臨，三歲嘅你已經有能力自己除衫、着鞋、食完一餐飯。
+準備入學前班，對學校有期待，亦可能有少少緊張不安。
+呢個冬天標誌住你幼兒早期階段嘅完結。`;
+
+  playSequentialStory(storyText, ()=>{
+    clearChoices();
+    $("#story").innerText = "請選擇父母面對你自理練習、準備入學嘅引導方式：";
+    addChoice("A｜父母盡量放手畀你自理；學前班簡單一提不做過多鋪排等你自然適應", async ()=>{
+      updateOcean({ openness: +4, conscientiousness: +3 });
+      gameState.stage = "childhoodEvent";
+      gameState.age = 6; gameState.eventIndex = 0;
+      await gameStorage.save(gameState);
+      runNextChildhoodEvent();
+    });
+    addChoice("B｜父母鼓勵自理遇困難幫手；慢慢講學校日常解答疑問減低不安", async ()=>{
+      updateOcean({ conscientiousness: +4, neuroticism: -2 });
+      gameState.stage = "childhoodEvent";
+      gameState.age = 6; gameState.eventIndex = 0;
+      await gameStorage.save(gameState);
+      runNextChildhoodEvent();
+    });
+    addChoice("C｜父母密集訓練自理，提前模擬校園生活細心安撫恐懼", async ()=>{
+      updateOcean({ conscientiousness: +5, neuroticism: +3 });
+      gameState.stage = "childhoodEvent";
+      gameState.age = 6; gameState.eventIndex = 0;
+      await gameStorage.save(gameState);
+      runNextChildhoodEvent();
+    });
+  });
+}
+
+function runNextChildhoodEvent(){
+  clearTimeouts();
+  clearChoices();
+  gameState.stage = "childhoodEvent";
+  let idx = gameState.eventIndex;
+  let childhoodList = [
+    { text:"小學時班裡組織課外活動，同學邀請你一齊參加。", choices:[
+      {text:"參加活動，同大家一齊玩", delta:{extraversion:+8, agreeableness:+4}},
+      {text:"婉拒邀請，獨自留低看書", delta:{openness:+6, extraversion:-5}}
+    ]},
+    { text:"屋企遇到小困難，父母商量事情，你在旁聽。", choices:[
+      {text:"嘗試體諒父母，主動詢問是否需要幫忙", delta:{agreeableness:+8, conscientiousness:+4}},
+      {text:"唔想介入，返自己房間", delta:{neuroticism:+4, extraversion:-3}}
+    ]},
+    { text:"考試成績不理想，你心裡開始思考自己嘅時間應該點樣分配。", choices:[
+      {text:"決定調整時間，專心溫習", delta:{conscientiousness:+8, neuroticism:-3}},
+      {text:"覺得分數唔係一切，繼續做自己鍾意嘅事", delta:{openness:+6, conscientiousness:-4}}
+    ]}
+  ];
+
+  if(idx >= childhoodList.length){
+    showAge15FinalChoices();
+    return;
+  }
+
+  let evt = childhoodList[idx];
+  
+  playSequentialStory(evt.text, ()=>{
+    clearChoices();
+    evt.choices.forEach(ch=>{
+      addChoice(ch.text, async ()=>{
+        updateOcean(ch.delta);
+        gameState.eventIndex++;
+        await gameStorage.save(gameState);
+        runNextChildhoodEvent();
+      });
+    });
+  }, false);
+}
+
+function showAge15FinalChoices(){
+  clearTimeouts();
+  gameState.stage = "age15Choice";
+  clearChoices();
+  playSequentialStory("你已經15歲。\n回望成長歲月，你需要選擇接下來主要投入嘅方向：", ()=>{
+    clearChoices();
+    let finalChoices = [
+      { text:"專心讀書，希望爭取好成績", delta:{ conscientiousness:+15, openness:+5 } },
+      { text:"投入自己嘅興趣愛好，發展專長", delta:{ openness:+15, extraversion:+5 } },
+      { text:"希望出社會工作，早點賺錢", delta:{ conscientiousness:+10, agreeableness:+5 } }
+    ];
+    finalChoices.forEach(opt=>{
+      addChoice(opt.text, async ()=>{
+        updateOcean(opt.delta);
+        await gameStorage.save(gameState);
+        playSequentialStory("你做出咗選擇。第1階段完結，即將進入19歲｜風雲初起。", ()=>{
+          clearChoices();
+        }, false);
+        refreshTagDisplay();
+      });
+    });
+  }, false);
+}
+
+async function loadGame(){
+  try{
+    let saved = await gameStorage.load();
+    if(saved){
+      if(saved.birth && saved.stage !== undefined){
+        gameState = saved;
+      }else{
+        localStorage.removeItem("lifeGameSave");
+        showStartScreen();
+        return;
+      }
+    }
+  }catch(e){
+    localStorage.removeItem("lifeGameSave");
+  }
+
+  checkAgeNationalityChange();
+  if(!gameState.ocean) initOceanAttributes();
+  drawOceanRadar();
+  
+  switch(gameState.stage){
+    case "start": showStartScreen(); break;
+    case "prologue": runPrologue(); break;
+    case "age0_spring": runAge0Spring(); break;
+    case "age0_summer": runAge0Summer(); break;
+    case "age0_autumn": runAge0Autumn(); break;
+    case "age0_winter": runAge0Winter(); break;
+    case "age1_spring": runAge1Spring(); break;
+    case "age1_summer": runAge1Summer(); break;
+    case "age1_autumn": runAge1Autumn(); break;
+    case "age1_winter": runAge1Winter(); break;
+    case "age2_spring": runAge2Spring(); break;
+    case "age2_summer": runAge2Summer(); break;
+    case "age2_autumn": runAge2Autumn(); break;
+    case "age2_winter": runAge2Winter(); break;
+    case "age3_spring": runAge3Spring(); break;
+    case "age3_summer": runAge3Summer(); break;
+    case "age3_autumn": runAge3Autumn(); break;
+    case "age3_winter": runAge3Winter(); break;
+    case "childhoodEvent": runNextChildhoodEvent(); break;
+    case "age15Choice": showAge15FinalChoices(); break;
+    default: showStartScreen();
+  }
+  refreshTagDisplay();
+}
+
+function openJumpMenu(){
+  let menuText = "請選擇要跳轉嘅劇情分支：\n";
+  jumpList.forEach((item,i)=>{ menuText += `${i+1}. ${item.name}\n`; });
+  let input = prompt(menuText + "\n輸入數字：");
+  let num = parseInt(input);
+  if(!isNaN(num) && num >= 1 && num <= jumpList.length){
+    jumpList[num-1].fn();
+  }
+}
+
+function enterAdminMode(){
+  isAdminMode = true;
+  $("#adminOverlay").style.display = "block";
+  refreshTagDisplay();
+}
+function exitAdminMode(){
+  isAdminMode = false;
+  $("#adminOverlay").style.display = "none";
+}
+
+const TAP_TIMEOUT = 2500;
+let tapPhase = 0;
+let tapCount = 0;
+let tapTimer = null;
+
+document.addEventListener("click", (e)=>{
+  const settingsModal = $("#settingsModal");
+  if(!settingsModal || settingsModal.style.display !== "flex") return;
+
+  if(e.target.classList.contains("settings-btn") || e.target.closest('.modal-content') && e.target.tagName === "BUTTON"){
+    return;
+  }
+
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(()=>{
+    tapPhase = 0;
+    tapCount = 0;
+  }, TAP_TIMEOUT);
+
+  const winHeight = window.innerHeight;
+  const clickY = e.clientY;
+  const isUpper = clickY < winHeight / 2;
+
+  if(tapPhase === 0){
+    if(isUpper){
+      tapCount++;
+      if(tapCount >= 2){ tapPhase = 1; tapCount = 0; }
+    }
+  }else if(tapPhase === 1){
+    if(!isUpper){
+      tapCount++;
+      if(tapCount >= 3){
+        const pwd = prompt("請輸入管理員密碼");
+        if(pwd === "calvin"){ 
+          enterAdminMode(); 
+          closeSettings();
+        }
+        tapPhase = 0; tapCount = 0;
+      }
+    }
+  }
+});
+
+// 頁面載入後自動開啟封面動畫
+window.onload = function(){
+  playTitleIntroAnimation();
+};
+</script>
+</body>
+</html>
