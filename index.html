@@ -3,18 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>現實人生｜第1階段 0–15歲少年奠基</title>
+<title>現實人生｜香港人生之旅</title>
 <style>
 *{box-sizing:border-box;font-family:system-ui, sans-serif;margin:0;padding:0}
-body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-height:1.6; position:relative; min-height:100vh;}
-#container{background:#222;padding:24px;border-radius:12px;min-height:400px;display:flex;flex-direction:column;justify-content:space-between; position:relative;}
+
+/* 全局背景圖設置（已修正為 Hk1.jpg） */
+body{
+  background:#111 url('Hk1.jpg') no-repeat center center fixed;
+  background-size:cover;
+  color:#eee;
+  padding:24px;
+  max-width:800px;
+  margin:0 auto;
+  line-height:1.6;
+  position:relative;
+  min-height:100vh;
+}
+
+/* 遊戲內容器增加半透明背景遮罩，確保文字與圖表清晰 */
+#container{
+  background:rgba(34, 34, 34, 0.92);
+  backdrop-filter: blur(8px);
+  padding:24px;
+  border-radius:12px;
+  min-height:400px;
+  display:none; /* 開局預設隱藏，待點擊開始遊戲後淡入 */
+  flex-direction:column;
+  justify-content:space-between;
+  position:relative;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+/* ===== 開場封面 / 遊戲標題動畫層 ===== */
+#titleCover{
+  position:fixed;
+  top:0; left:0; width:100vw; height:100vh;
+  background:#111 url('Hk1.jpg') no-repeat center center;
+  background-size:cover;
+  z-index:2000;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  opacity:0;
+  transition: opacity 1.5s ease-in-out;
+}
+
+/* 封面暗色遮罩 */
+#titleCover::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: -1;
+}
+
+/* 粗體發光遊戲標題特效 */
+#gameTitle{
+  font-size:42px;
+  font-weight:900;
+  color:#ffc107;
+  text-shadow: 0 0 20px rgba(255, 193, 7, 0.8), 0 4px 10px rgba(0,0,0,0.9);
+  letter-spacing: 4px;
+  opacity:0;
+  transform: scale(0.9);
+  transition: opacity 1.2s ease, transform 1.2s ease;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* 開始遊戲按鈕特效 */
+#startGameBtn{
+  padding:16px 40px;
+  font-size:20px;
+  font-weight:bold;
+  background:linear-gradient(135deg, #ffc107, #ff8c00);
+  color:#111;
+  border:none;
+  border-radius:30px;
+  cursor:pointer;
+  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.5);
+  opacity:0;
+  transform: translateY(20px);
+  transition: opacity 1s ease, transform 1s ease, background 0.3s;
+  display:none;
+}
+#startGameBtn:hover{
+  background:linear-gradient(135deg, #ffca28, #ffa000);
+  transform: translateY(18px) scale(1.05);
+}
 
 /* ===== 設定按鈕 (右上角) ===== */
 #openSettingsBtn{
   position:absolute;
   top:20px;
   right:20px;
-  background:#333;
+  background:rgba(51, 51, 51, 0.8);
   color:#fff;
   border:1px solid #555;
   padding:8px 14px;
@@ -30,8 +116,8 @@ body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-
   display:none;
   position:fixed;
   top:0; left:0; width:100%; height:100%;
-  background:rgba(0,0,0,0.8);
-  z-index:1000;
+  background:rgba(0,0,0,0.85);
+  z-index:3000;
   justify-content:center;
   align-items:center;
 }
@@ -113,7 +199,7 @@ display:none;
 position:fixed;
 top:10px;
 right:10px;
-z-index:999;
+z-index:2999;
 background:#1a1a1a;
 border:1px solid #ffc107;
 padding:12px;
@@ -142,6 +228,12 @@ white-space:pre-wrap;
 </head>
 <body>
 
+<!-- 開場動畫與封面層 -->
+<div id="titleCover">
+  <div id="gameTitle">香港人生之旅</div>
+  <button id="startGameBtn" onclick="enterGameFromTitle()">開始遊戲</button>
+</div>
+
 <!-- 頂部設定按鈕 -->
 <button id="openSettingsBtn" onclick="openSettings()">⚙️ 設定</button>
 
@@ -150,7 +242,7 @@ white-space:pre-wrap;
   <div class="modal-content">
     <h3>⚙️ 遊戲設定</h3>
     <button class="settings-btn" onclick="shareGameLink()">🔗 分享遊戲</button>
-    <div id="shareToast">已複製遊戲連結，可以和任何朋友在社交軟件上按"貼上"分享遊戲，感激分享和支持❤️ </div>
+    <div id="shareToast">已複製遊戲連結，可以和任何朋友在社交程式上按"貼上"分享遊戲</div>
     <button class="settings-btn" onclick="closeSettings()">關閉設定</button>
   </div>
 </div>
@@ -289,7 +381,7 @@ function generateBirthBackground(gameState){
 ${wealthDesc}`;
 }
 
-// 核心遊戲狀態（包含 OCEAN 大五人格）
+// 核心遊戲狀態
 let gameState = {
   birth:{
     gender:"male",
@@ -327,7 +419,7 @@ let gameState = {
 let isAdminMode = false;
 let currentTimeout = null;
 let currentInterval = null;
-let skipStoryHandler = null; // 用於點擊空白處跳過當前文字
+let skipStoryHandler = null;
 
 const STORAGE_MODE = "prototype"; 
 
@@ -439,6 +531,49 @@ const jumpList = [
 const $ = s=>document.querySelector(s);
 const $$ = s=>document.querySelectorAll(s);
 
+// ===== 遊戲開場動畫邏輯 =====
+function playTitleIntroAnimation(){
+  const titleCover = $("#titleCover");
+  const gameTitle = $("#gameTitle");
+  const startBtn = $("#startGameBtn");
+
+  // 1. 圖片背景淡入 (1.5秒)
+  setTimeout(()=>{
+    titleCover.style.opacity = "1";
+  }, 100);
+
+  // 2. 遊戲標題淡入並微微放大
+  setTimeout(()=>{
+    gameTitle.style.opacity = "1";
+    gameTitle.style.transform = "scale(1)";
+  }, 1200);
+
+  // 3. 彈出「開始遊戲」按鈕
+  setTimeout(()=>{
+    startBtn.style.display = "inline-block";
+    setTimeout(()=>{
+      startBtn.style.opacity = "1";
+      startBtn.style.transform = "translateY(0)";
+    }, 50);
+  }, 2600);
+}
+
+// 點擊「開始遊戲」後過渡至遊戲主介面
+function enterGameFromTitle(){
+  const titleCover = $("#titleCover");
+  const container = $("#container");
+
+  titleCover.style.opacity = "0";
+  setTimeout(()=>{
+    titleCover.style.display = "none";
+    container.style.display = "flex";
+    setTimeout(()=>{
+      container.style.opacity = "1";
+      loadGame(); // 載入遊戲進度或顯示創角畫面
+    }, 50);
+  }, 1000);
+}
+
 function clearTimeouts(){
   if(currentTimeout) clearTimeout(currentTimeout);
   if(currentInterval) clearInterval(currentInterval);
@@ -456,7 +591,6 @@ function addChoice(text, callback){
   $("#choices").appendChild(btn);
 }
 
-// 設定面板與分享功能
 function openSettings(){
   $("#settingsModal").style.display = "flex";
   tapPhase = 0;
@@ -477,7 +611,6 @@ async function shareGameLink(){
   }
 }
 
-// 輔助函式：安全增加/減少 OCEAN 數值
 function updateOcean(deltaObj){
   for(let key in deltaObj){
     if(gameState.ocean[key] !== undefined){
@@ -608,7 +741,6 @@ function drawOceanRadar(){
   ctx.stroke();
 }
 
-// 支援點擊空白處即時跳過當前文字（方案B）
 function playSequentialStory(fullText, onComplete, showSkipBtn = true){
   clearTimeouts();
   clearChoices();
@@ -671,7 +803,6 @@ function playSequentialStory(fullText, onComplete, showSkipBtn = true){
 
     let charIdx = 0;
 
-    // 方案B點擊跳過監聽器
     if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
     skipStoryHandler = function(e){
       if(e.target.closest('button') || e.target.closest('#settingsModal') || e.target.closest('#adminOverlay')) return;
@@ -680,7 +811,6 @@ function playSequentialStory(fullText, onComplete, showSkipBtn = true){
       clearTimeout(currentTimeout);
       document.removeEventListener("click", skipStoryHandler);
       
-      // 直接跳過當前句，短暫淡出後進入下一句
       storyEl.style.opacity = 0;
       currentTimeout = setTimeout(()=>{
         playNextSentence();
@@ -809,7 +939,6 @@ function showStartScreen(){
   refreshTagDisplay();
 }
 
-// 序章
 function runPrologue(){
   gameState.stage = "prologue";
   gameState.age = 0;
@@ -820,15 +949,15 @@ function runPrologue(){
 
 冰冷嘅空氣湧入，背脊傳來別人的輕輕一拍。
 
-「啪」
+「啪！」
 
 胸腔擴張，你本能地張開口——
 
-「哇——」
+「哇——！」
 
 一聲響亮嘅喊聲，劃破產房寂靜。
 
-媽媽溫柔嘅喘息、爸爸激動顫抖嘅雙手，將你緊緊托起。
+媽媽溫柔嘅喘息、爸爸激動顫抖嘅雙手,將你緊緊托起。
 
 呢個世界，我嚟喇。`;
 
@@ -839,7 +968,6 @@ function runPrologue(){
   }, true);
 }
 
-// 0至3歲四季劇情鏈
 function runAge0Spring(){
   gameState.stage = "age0_spring";
   gameState.age = 0;
@@ -1089,7 +1217,7 @@ ${wealthDesc}
   playSequentialStory(storyText, ()=>{
     clearChoices();
     $("#story").innerText = "請選擇父母面對你嘗試自理、學習分類物件嘅回應：";
-    addChoice("A｜父母任由你自己嘗試用羹食飯、玩形狀配對，整污糟唔阻止", async ()=>{
+    addChoice("A｜父母唔任由你自己嘗試用羹食飯、玩形狀配對，整污糟唔阻止", async ()=>{
       updateOcean({ openness: +4, conscientiousness: +2 });
       gameState.stage = "age2_spring"; gameState.age = 2;
       await gameStorage.save(gameState);
@@ -1520,19 +1648,17 @@ function exitAdminMode(){
   $("#adminOverlay").style.display = "none";
 }
 
-// ===== 管理員手勢（現在限制必須在「設定彈窗」打開時才能觸發） =====
 const TAP_TIMEOUT = 2500;
 let tapPhase = 0;
 let tapCount = 0;
 let tapTimer = null;
 
 document.addEventListener("click", (e)=>{
-  // 檢查設定彈窗是否處於開啟狀態
   const settingsModal = $("#settingsModal");
   if(!settingsModal || settingsModal.style.display !== "flex") return;
 
   if(e.target.classList.contains("settings-btn") || e.target.closest('.modal-content') && e.target.tagName === "BUTTON"){
-    return; // 點擊設定內的按鈕不計算進手勢
+    return;
   }
 
   clearTimeout(tapTimer);
@@ -1565,7 +1691,10 @@ document.addEventListener("click", (e)=>{
   }
 });
 
-loadGame();
+// 頁面載入後自動開啟封面動畫
+window.onload = function(){
+  playTitleIntroAnimation();
+};
 </script>
 </body>
 </html>
