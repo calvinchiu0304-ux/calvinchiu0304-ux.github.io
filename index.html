@@ -6,8 +6,65 @@
 <title>現實人生｜第1階段 0–15歲少年奠基</title>
 <style>
 *{box-sizing:border-box;font-family:system-ui, sans-serif;margin:0;padding:0}
-body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-height:1.6}
-#container{background:#222;padding:24px;border-radius:12px;min-height:400px;display:flex;flex-direction:column;justify-content:space-between}
+body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-height:1.6; position:relative; min-height:100vh;}
+#container{background:#222;padding:24px;border-radius:12px;min-height:400px;display:flex;flex-direction:column;justify-content:space-between; position:relative;}
+
+/* ===== 設定按鈕 (右上角) ===== */
+#openSettingsBtn{
+  position:absolute;
+  top:20px;
+  right:20px;
+  background:#333;
+  color:#fff;
+  border:1px solid #555;
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:14px;
+  z-index:10;
+}
+#openSettingsBtn:hover{background:#444;}
+
+/* ===== 設定彈窗 (Modal) ===== */
+#settingsModal{
+  display:none;
+  position:fixed;
+  top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.8);
+  z-index:1000;
+  justify-content:center;
+  align-items:center;
+}
+.modal-content{
+  background:#222;
+  border:1px solid #555;
+  padding:28px;
+  border-radius:12px;
+  width:90%;
+  max-width:360px;
+  text-align:center;
+}
+.modal-content h3{margin-bottom:16px;color:#ffc107;font-size:18px;}
+.settings-btn{
+  display:block;
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  background:#333;
+  color:#fff;
+  border:1px solid #555;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:16px;
+}
+.settings-btn:hover{background:#444;}
+#shareToast{
+  margin-top:12px;
+  color:#ffc107;
+  font-size:13px;
+  line-height:1.4;
+  display:none;
+}
 
 /* ===== 五角形雷達圖容器 ===== */
 #ocean-radar-box{
@@ -17,6 +74,7 @@ body{background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;line-
   padding:12px;
   margin-bottom:16px;
   text-align:center;
+  margin-top:20px;
 }
 #ocean-radar-box h3{
   font-size:15px;
@@ -83,6 +141,19 @@ white-space:pre-wrap;
 </style>
 </head>
 <body>
+
+<!-- 頂部設定按鈕 -->
+<button id="openSettingsBtn" onclick="openSettings()">⚙️ 設定</button>
+
+<!-- 設定彈窗 -->
+<div id="settingsModal">
+  <div class="modal-content">
+    <h3>⚙️ 遊戲設定</h3>
+    <button class="settings-btn" onclick="shareGameLink()">🔗 分享遊戲</button>
+    <div id="shareToast">已複製遊戲連結，可以和任何朋友在社交軟件上按"貼上"分享遊戲，感激分享和支持❤️ </div>
+    <button class="settings-btn" onclick="closeSettings()">關閉設定</button>
+  </div>
+</div>
 
 <div id="container">
   <!-- 大五人格五角形雷達圖（所有玩家皆可見） -->
@@ -231,13 +302,12 @@ let gameState = {
     origin:"localHK"
   },
   initialNationality:"",
-  // 大五人格五維度（OCEAN，範圍 0 - 100）
   ocean:{
-    openness: 0,        // 開放性
-    conscientiousness: 0, // 盡責性
-    extraversion: 0,    // 外向性
-    agreeableness: 0,   // 宜人性
-    neuroticism: 0      // 神經質
+    openness: 0,
+    conscientiousness: 0,
+    extraversion: 0,
+    agreeableness: 0,
+    neuroticism: 0
   },
   trait:{
     outgoing:50, pragmatic:50, empathy:50, introvert:50,
@@ -257,6 +327,7 @@ let gameState = {
 let isAdminMode = false;
 let currentTimeout = null;
 let currentInterval = null;
+let skipStoryHandler = null; // 用於點擊空白處跳過當前文字
 
 const STORAGE_MODE = "prototype"; 
 
@@ -331,7 +402,7 @@ const hkDistrictResidenceList = [
   { district:"大埔區", residences:[{type:"公共屋邨", name:"富善邨"}, {type:"公共屋邨", name:"廣福邨"}, {type:"私人屋苑", name:"大埔廣場"}, {type:"寶湖花園"}] },
   { district:"北區", residences:[{type:"公共屋邨", name:"彩園邨"}, {type:"公共屋邨", name:"太平邨"}, {type:"公共屋邨", name:"嘉福邨"}, {type:"私人屋苑", name:"粉嶺中心"}] },
   { district:"元朗區", residences:[{type:"公共屋邨", name:"朗屏邨"}, {type:"公共屋邨", name:"天耀邨"}, {type:"公共屋邨", name:"天瑞邨"}, {type:"私人屋苑", name:"嘉湖山莊"}, {type:"村屋", name:"元朗鄉村村屋"}] },
-  { district:"屯門區", residences:[{type:"公共屋邨", name:"良景邨"}, {type:"公共屋邨", name:"田景邨"}, {type:"公共屋邨", name:"兆康苑"}, {type:"私人屋苑", name:"恆福花園"}, {type:"私人屋苑", name:"龍門居"}] },
+  { district:"屯門區", residences:[{type:"公共屋邨", name:"良景邨"}, {type:"公共屋邨", name:"田景邨"}, {type:"兆康苑", name:"兆康苑"}, {type:"私人屋苑", name:"恆福花園"}, {type:"私人屋苑", name:"龍門居"}] },
   { district:"西貢區", residences:[{type:"公共屋邨", name:"寶林邨"}, {type:"公共屋邨", name:"景林邨"}, {type:"公共屋邨", name:"尚德邨"}, {type:"私人屋苑", name:"將軍澳中心"}, {type:"私人屋苑", name:"東港城"}, {type:"村屋", name:"西貢鄉村村屋"}] },
   { district:"離島區", residences:[{type:"公共屋邨", name:"東涌逸東邨"}, {type:"公共屋邨", name:"東涌富東邨"}, {type:"私人屋苑", name:"愉景灣"}, {type:"村屋", name:"梅窩銀礦灣村屋"}] }
 ];
@@ -361,8 +432,8 @@ const jumpList = [
   {name:"3歲·夏", fn:()=>runAge3Summer()},
   {name:"3歲·秋", fn:()=>runAge3Autumn()},
   {name:"3歲·冬", fn:()=>runAge3Winter()},
-  {name:"童年事件起點", fn:()=>jumpToChildhood()},
-  {name:"15歲選擇畫面", fn:()=>jumpToAge15()}
+  {name:"童年事件起點", fn:()=>runNextChildhoodEvent()},
+  {name:"15歲選擇畫面", fn:()=>showAge15FinalChoices()}
 ];
 
 const $ = s=>document.querySelector(s);
@@ -385,17 +456,37 @@ function addChoice(text, callback){
   $("#choices").appendChild(btn);
 }
 
-// 輔助函式：安全增加/減少 OCEAN 數值 (限制 0-100)
+// 設定面板與分享功能
+function openSettings(){
+  $("#settingsModal").style.display = "flex";
+  tapPhase = 0;
+  tapCount = 0;
+}
+function closeSettings(){
+  $("#settingsModal").style.display = "none";
+  $("#shareToast").style.display = "none";
+}
+async function shareGameLink(){
+  const link = window.location.href;
+  try {
+    await navigator.clipboard.writeText(link);
+    const toast = $("#shareToast");
+    toast.style.display = "block";
+  } catch(e) {
+    alert("複製連結失敗，請手動複製網址分享。");
+  }
+}
+
+// 輔助函式：安全增加/減少 OCEAN 數值
 function updateOcean(deltaObj){
   for(let key in deltaObj){
     if(gameState.ocean[key] !== undefined){
       gameState.ocean[key] = Math.max(0, Math.min(100, gameState.ocean[key] + deltaObj[key]));
     }
   }
-  drawOceanRadar(); // 自動重繪五角形雷達圖
+  drawOceanRadar();
 }
 
-// ===================== 【大五人格 (OCEAN) 初始值計算邏輯】 =====================
 function initOceanAttributes(){
   const g = gameState;
   let baseAgeVal = 0;
@@ -438,7 +529,6 @@ function initOceanAttributes(){
   drawOceanRadar();
 }
 
-// ===================== 【HTML5 Canvas 五角形雷達圖繪製】 =====================
 function drawOceanRadar(){
   const canvas = document.getElementById("oceanCanvas");
   if(!canvas) return;
@@ -518,9 +608,15 @@ function drawOceanRadar(){
   ctx.stroke();
 }
 
+// 支援點擊空白處即時跳過當前文字（方案B）
 function playSequentialStory(fullText, onComplete, showSkipBtn = true){
   clearTimeouts();
   clearChoices();
+
+  if(skipStoryHandler){
+    document.removeEventListener("click", skipStoryHandler);
+    skipStoryHandler = null;
+  }
 
   let rawSentences = fullText.split(/([。！？\n])/);
   let sentences = [];
@@ -543,16 +639,26 @@ function playSequentialStory(fullText, onComplete, showSkipBtn = true){
     const skipBtn = document.createElement("button");
     skipBtn.className = "skip-btn";
     skipBtn.innerText = "⏭️ 跳過劇本";
-    skipBtn.onclick = function(){
+    skipBtn.onclick = function(e){
+      e.stopPropagation();
       clearTimeouts();
+      cleanupStoryPlayer();
       onComplete();
     }
     $("#choices").appendChild(skipBtn);
   }
 
+  function cleanupStoryPlayer(){
+    if(skipStoryHandler){
+      document.removeEventListener("click", skipStoryHandler);
+      skipStoryHandler = null;
+    }
+  }
+
   function playNextSentence(){
     if(index >= sentences.length){
       currentTimeout = setTimeout(()=>{
+        cleanupStoryPlayer();
         onComplete();
       }, 800);
       return;
@@ -564,12 +670,31 @@ function playSequentialStory(fullText, onComplete, showSkipBtn = true){
     storyEl.style.opacity = 1;
 
     let charIdx = 0;
+
+    // 方案B點擊跳過監聽器
+    if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
+    skipStoryHandler = function(e){
+      if(e.target.closest('button') || e.target.closest('#settingsModal') || e.target.closest('#adminOverlay')) return;
+      
+      clearInterval(currentInterval);
+      clearTimeout(currentTimeout);
+      document.removeEventListener("click", skipStoryHandler);
+      
+      // 直接跳過當前句，短暫淡出後進入下一句
+      storyEl.style.opacity = 0;
+      currentTimeout = setTimeout(()=>{
+        playNextSentence();
+      }, 150);
+    };
+    document.addEventListener("click", skipStoryHandler);
+
     currentInterval = setInterval(()=>{
       if(charIdx < textToType.length){
         storyEl.innerText += textToType.charAt(charIdx);
         charIdx++;
       }else{
         clearInterval(currentInterval);
+        if(skipStoryHandler) document.removeEventListener("click", skipStoryHandler);
         let readWaitTime = Math.max(1800, textToType.length * 110);
         currentTimeout = setTimeout(()=>{
           storyEl.style.opacity = 0;
@@ -670,7 +795,6 @@ function showStartScreen(){
   
   $("#story").innerText = `新的人生即將開始。\n${bioText}\n\n居所：${gameState.birth.residenceType}「${gameState.birth.residenceName}」\n國籍：${gameState.birth.birthCountry}\n\n你的出身條件已經隨機生成。`;
 
-  // 點擊後改為進入「序章」
   addChoice("開始新一局", async ()=>{
     gameState.birthLocked = true;
     gameState.age = 0;
@@ -685,7 +809,7 @@ function showStartScreen(){
   refreshTagDisplay();
 }
 
-// ===================== 【新增：序章執行函數】 =====================
+// 序章
 function runPrologue(){
   gameState.stage = "prologue";
   gameState.age = 0;
@@ -696,11 +820,11 @@ function runPrologue(){
 
 冰冷嘅空氣湧入，背脊傳來別人的輕輕一拍。
 
-「啪！」
+「啪」
 
 胸腔擴張，你本能地張開口——
 
-「哇——！」
+「哇——」
 
 一聲響亮嘅喊聲，劃破產房寂靜。
 
@@ -715,8 +839,7 @@ function runPrologue(){
   }, true);
 }
 
-// ================== 0至3歲四季劇情鏈 (結合 OCEAN 動態變更) ==================
-
+// 0至3歲四季劇情鏈
 function runAge0Spring(){
   gameState.stage = "age0_spring";
   gameState.age = 0;
@@ -1397,14 +1520,19 @@ function exitAdminMode(){
   $("#adminOverlay").style.display = "none";
 }
 
+// ===== 管理員手勢（現在限制必須在「設定彈窗」打開時才能觸發） =====
 const TAP_TIMEOUT = 2500;
 let tapPhase = 0;
 let tapCount = 0;
 let tapTimer = null;
 
 document.addEventListener("click", (e)=>{
-  if(e.target.classList.contains("choice-btn") || e.target.classList.contains("admin-over-btn") || e.target.classList.contains("skip-btn")){
-    return;
+  // 檢查設定彈窗是否處於開啟狀態
+  const settingsModal = $("#settingsModal");
+  if(!settingsModal || settingsModal.style.display !== "flex") return;
+
+  if(e.target.classList.contains("settings-btn") || e.target.closest('.modal-content') && e.target.tagName === "BUTTON"){
+    return; // 點擊設定內的按鈕不計算進手勢
   }
 
   clearTimeout(tapTimer);
@@ -1427,7 +1555,10 @@ document.addEventListener("click", (e)=>{
       tapCount++;
       if(tapCount >= 3){
         const pwd = prompt("請輸入管理員密碼");
-        if(pwd === "calvin"){ enterAdminMode(); }
+        if(pwd === "calvin"){ 
+          enterAdminMode(); 
+          closeSettings();
+        }
         tapPhase = 0; tapCount = 0;
       }
     }
