@@ -9,7 +9,7 @@
 
 /* 全局背景圖設置 */
 body{
-  background:#111 url('Hk1.jpg') no-repeat center center fixed;
+  background:#111 url('Hk2.jpg') no-repeat center center fixed;
   background-size:cover;
   color:#eee;
   padding:24px;
@@ -40,7 +40,7 @@ body{
 #titleCover{
   position:fixed;
   top:0; left:0; width:100vw; height:100vh;
-  background:#0b0f19 url('Hk2.jpg') no-repeat center center;
+  background:#0b0f19 url('Hk1.jpg') no-repeat center center;
   background-size:cover;
   z-index:2000;
   display:flex;
@@ -67,7 +67,7 @@ body{
   padding: 0 20px;
 }
 
-/* 上方大標題「香港」：藍紅雙色霓虹燈設計（外框電光藍、內層桃紅發光）[span_2](start_span)[span_2](end_span) */
+/* 上方大標題「香港」：藍紅雙色霓虹燈設計 */
 #gameTitle{
   font-size: 80px;
   font-weight: 900;
@@ -99,7 +99,7 @@ body{
   transition: opacity 1.2s ease 0.4s, transform 1.2s ease 0.4s;
 }
 
-/* 最下方閃爍的霓虹文字框與「開始遊戲」按鈕[span_3](start_span)[span_3](end_span) */
+/* 最下方閃爍的霓虹文字框與「開始遊戲」按鈕 */
 @keyframes neonPulse {
   0%, 100% {
     border-color: #05d9e8;
@@ -121,7 +121,6 @@ body{
   border: 3px solid #05d9e8;
   border-radius: 12px;
   cursor: pointer;
-  /* 結合閃爍呼吸燈特效 */
   animation: neonPulse 2.5s infinite ease-in-out;
   text-shadow: 0 0 8px #05d9e8, 0 0 15px #ff2a6d;
   opacity: 0;
@@ -191,26 +190,27 @@ body{
   display:none;
 }
 
-/* ===== 五角形雷達圖容器 ===== */
-/* ===== 五角形雷達圖容器（改為白色背景風格） ===== */
+/* ===== 五角形雷達圖容器（科技面板邊框風格） ===== */
 #ocean-radar-box{
-  background:#ffffff;
-  border:1px solid #ddd;
-  border-radius:10px;
-  padding:12px;
-  margin-bottom:16px;
-  text-align:center;
-  margin-top:20px;
+  background: linear-gradient(135deg, rgba(16, 37, 66, 0.95) 0%, rgba(10, 22, 40, 0.95) 100%);
+  border: 2px solid #05d9e8;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+  text-align: center;
+  margin-top: 20px;
+  box-shadow: 0 0 15px rgba(5, 217, 232, 0.25), inset 0 0 10px rgba(5, 217, 232, 0.15);
 }
 #ocean-radar-box h3{
-  font-size:15px;
-  color:#1976d2;
-  margin-bottom:8px;
+  font-size: 15px;
+  color: #05d9e8;
+  margin-bottom: 8px;
+  text-shadow: 0 0 6px rgba(5, 217, 232, 0.5);
 }
 #oceanCanvas{
-  background:#ffffff;
-  border-radius:8px;
-  max-width:100%;
+  background: #ffffff;
+  border-radius: 8px;
+  max-width: 100%;
 }
 
 #story{margin-bottom:24px;font-size:18px;min-height:120px;display:flex;align-items:center;transition: opacity 0.3s ease;}
@@ -291,7 +291,7 @@ white-space:pre-wrap;
 </div>
 
 <div id="container">
-  <!-- 大五人格五角形雷達圖（所有玩家皆可見） -->
+  <!-- 大五人格五角形雷達圖（科技面板邊框風格） -->
   <div id="ocean-radar-box">
     <h3>🧠 心理狀態｜大五人格 (OCEAN)</h3>
     <canvas id="oceanCanvas" width="300" height="260"></canvas>
@@ -710,6 +710,7 @@ function initOceanAttributes(){
   drawOceanRadar();
 }
 
+// 繪製雷達圖（白底 + 藍色圖表 + 藍色填充）
 function drawOceanRadar(){
   const canvas = document.getElementById("oceanCanvas");
   if(!canvas) return;
@@ -720,7 +721,9 @@ function drawOceanRadar(){
   const centerY = height / 2 + 10;
   const radius = 80;
 
-  ctx.clearRect(0, 0, width, height);
+  // 填入白色背景
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
 
   const labels = [
     { name: "開放性 (O)", key: "openness" },
@@ -733,7 +736,8 @@ function drawOceanRadar(){
   const total = labels.length;
   const angleStep = (Math.PI * 2) / total;
 
-  ctx.strokeStyle = "#444";
+  // 網格線改為淺灰色
+  ctx.strokeStyle = "#e0e0e0";
   ctx.lineWidth = 1;
   for(let level = 1; level <= 5; level++){
     const r = (radius / 5) * level;
@@ -749,7 +753,8 @@ function drawOceanRadar(){
     ctx.stroke();
   }
 
-  ctx.fillStyle = "#bbb";
+  // 文字標籤改為深色
+  ctx.fillStyle = "#333333";
   ctx.font = "12px system-ui";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -762,7 +767,7 @@ function drawOceanRadar(){
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.lineTo(x, y);
-    ctx.strokeStyle = "#333";
+    ctx.strokeStyle = "#d0d0d0";
     ctx.stroke();
 
     const labelX = centerX + (radius + 24) * Math.cos(angle);
@@ -771,6 +776,7 @@ function drawOceanRadar(){
     ctx.fillText(`${labels[i].name}:${Math.round(val)}`, labelX, labelY);
   }
 
+  // 雷達圖填滿顏色為藍色風格
   ctx.beginPath();
   for(let i = 0; i < total; i++){
     const angle = i * angleStep - Math.PI / 2;
@@ -782,9 +788,9 @@ function drawOceanRadar(){
     else ctx.lineTo(x, y);
   }
   ctx.closePath();
-  ctx.fillStyle = "rgba(255, 193, 7, 0.35)";
+  ctx.fillStyle = "rgba(33, 150, 243, 0.35)"; // 半透明藍色填滿
   ctx.fill();
-  ctx.strokeStyle = "#ffc107";
+  ctx.strokeStyle = "#2196F3"; // 鮮明藍色外框
   ctx.lineWidth = 2;
   ctx.stroke();
 }
@@ -1265,7 +1271,7 @@ ${wealthDesc}
   playSequentialStory(storyText, ()=>{
     clearChoices();
     $("#story").innerText = "請選擇父母面對你嘗試自理、學習分類物件嘅回應：";
-    addChoice("A｜父母任由你自己嘗試用羹食飯、玩形狀配對，整污糟唔阻止", async ()=>{
+    addChoice("A｜父母唔急住推進如廁訓練隨自然；搶玩具時不即時介入自行磨合", async ()=>{
       updateOcean({ openness: +4, conscientiousness: +2 });
       gameState.stage = "age2_spring"; gameState.age = 2;
       await gameStorage.save(gameState);
